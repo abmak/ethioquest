@@ -31,6 +31,9 @@ WEBROOT=/var/www/acme
 SITE=/etc/nginx/sites-available/ethioquest-domain
 ENABLED=/etc/nginx/sites-enabled/ethioquest-domain
 CERTBOT_IMAGE=certbot/certbot:latest
+# Kept apart from /etc/letsencrypt so the system certbot (which manages the
+# other sites through certbot.timer) never tries to renew this one.
+CERT_STATE=/etc/letsencrypt-domain
 BACKUP="/root/ethioquest-domain-backup-$(date +%Y%m%d%H%M%S)"
 
 # Run from the deploy directory, wherever the script itself was downloaded to.
@@ -152,7 +155,7 @@ covers() {
 # nginx vhosts already point at (a commercial or wildcard certificate for
 # jobsethiopia.et saves an issuance and keeps one certificate per name).
 find_cert() {
-  for candidate in /etc/letsencrypt/live/*/ /etc/letsencrypt-ip/live/*/; do
+  for candidate in "$CERT_STATE"/live/*/ /etc/letsencrypt/live/*/ /etc/letsencrypt-ip/live/*/; do
     [ -s "$candidate/fullchain.pem" ] || continue
     if covers "$candidate/fullchain.pem"; then
       printf '%s %s\n' "$candidate/fullchain.pem" "$candidate/privkey.pem"
@@ -184,34 +187,54 @@ if [ -z "$CERT" ]; then
   reload_or_restore || exit 1
 
   echo "• Requesting a certificate from Let's Encrypt"
-  if command -v certbot >/dev/null 2>&1; then
-    issue() {
-      certbot certonly --webroot -w "$WEBROOT" -d "$DOMAIN" --cert-name "$DOMAIN" \
-        --non-interactive --agree-tos --register-unsafely-without-email --keep-until-expiring
-    }
+  # The system certbot here resolves the ACME endpoint to IPv6 first and dies
+  # with "Network is unreachable" (this host has an IPv6 address but no route),
+  # while the official image — already on the box for the bare-IP certificate —
+  # connects over IPv4 and needs no upgrade. Prefer the image; fall back to the
+  # distribution package when docker or the image is missing.
+  if docker image inspect "$CERTBOT_IMAGE" >/dev/null 2>&1; then
+    USE_DOCKER=1
   else
-    issue() {
-      docker run --rm \
-        -v /etc/letsencrypt:/etc/letsencrypt \
-        -v "$WEBROOT":/var/www/acme \
-        "$CERTBOT_IMAGE" certonly --webroot -w /var/www/acme -d "$DOMAIN" \
-        --cert-name "$DOMAIN" --non-interactive --agree-tos \
-        --register-unsafely-without-email --keep-until-expiring
-    }
+    USE_DOCKER=0
   fi
 
-  if ! issue; then
+  issue_docker() {
+    install -d -m 700 "$CERT_STATE"
+    docker run --rm \
+      -v "$CERT_STATE":/etc/letsencrypt \
+      -v "$WEBROOT":/var/www/acme \
+      "$CERTBOT_IMAGE" certonly --webroot -w /var/www/acme -d "$DOMAIN" \
+      --cert-name "$DOMAIN" --non-interactive --agree-tos \
+      --register-unsafely-without-email --keep-until-expiring
+  }
+
+  issue_package() {
+    certbot certonly --webroot -w "$WEBROOT" -d "$DOMAIN" --cert-name "$DOMAIN" \
+      --non-interactive --agree-tos --register-unsafely-without-email --keep-until-expiring
+  }
+
+  if [ "$USE_DOCKER" = 1 ]; then
+    issue_docker || FAILED=1
+    CERT_DIR="$CERT_STATE/live/$DOMAIN"
+  elif command -v certbot >/dev/null 2>&1; then
+    issue_package || FAILED=1
+    CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
+  else
+    echo "Neither the certbot image nor the certbot package is installed" >&2
+    exit 1
+  fi
+
+  if [ "${FAILED:-0}" = 1 ] || [ ! -s "$CERT_DIR/fullchain.pem" ]; then
     echo >&2
-    echo "Let's Encrypt could not validate the name. HTTP-01 needs port 80 open to the" >&2
-    echo "internet and $DOMAIN pointing here; check with:" >&2
+    echo "Let's Encrypt did not get a certificate for $DOMAIN." >&2
+    echo "HTTP-01 needs port 80 reachable from the internet and the name pointing here:" >&2
     echo "  curl -sv http://$DOMAIN/.well-known/acme-challenge/probe" >&2
+    echo "  docker run --rm $CERTBOT_IMAGE --version   # image present?" >&2
     echo "A host whose port 80 is closed needs a DNS-01 certificate instead." >&2
     exit 1
   fi
-  CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
   CERT="$CERT_DIR/fullchain.pem"
   KEY="$CERT_DIR/privkey.pem"
-  [ -s "$CERT" ] && [ -s "$KEY" ] || { echo "certificate files are missing under $CERT_DIR" >&2; exit 1; }
 else
   echo "• Reusing the certificate in $CERT"
 fi
@@ -232,18 +255,24 @@ if [ -n "$want" ] && [ "$want" != "$got" ]; then
 fi
 
 # --- 4. Renewal --------------------------------------------------------------
-if [ -d /etc/letsencrypt/renewal ] && command -v certbot >/dev/null 2>&1; then
-  echo "• The system certbot timer renews this certificate"
-elif [ -d /etc/letsencrypt/renewal ]; then
-  cat >/etc/cron.d/ethioquest-domain-cert <<EOF
-# Renew the domain certificate and reload nginx.
+# A certificate in $CERT_STATE was issued by the image, and certbot.timer does
+# not know about that store, so it needs its own cron entry. One issued by the
+# package into /etc/letsencrypt is renewed by the timer like the other sites.
+case "$CERT" in
+  "$CERT_STATE"/*)
+    cat >/etc/cron.d/ethioquest-domain-cert <<EOF
+# Renew the $DOMAIN certificate and reload nginx (state in $CERT_STATE).
 SHELL=/bin/sh
 PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-23 4,16 * * * root docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v $WEBROOT:/var/www/acme $CERTBOT_IMAGE renew --quiet && systemctl reload nginx
+23 4,16 * * * root docker run --rm -v $CERT_STATE:/etc/letsencrypt -v $WEBROOT:/var/www/acme $CERTBOT_IMAGE renew --quiet && systemctl reload nginx
 EOF
-  chmod 644 /etc/cron.d/ethioquest-domain-cert
-  echo "• Added /etc/cron.d/ethioquest-domain-cert for renewal"
-fi
+    chmod 644 /etc/cron.d/ethioquest-domain-cert
+    echo "• Added /etc/cron.d/ethioquest-domain-cert for renewal"
+    ;;
+  *)
+    echo "• The system certbot timer renews this certificate"
+    ;;
+esac
 
 # --- 5. Point the app at the domain -----------------------------------------
 if [ -f .env ]; then
