@@ -176,7 +176,7 @@ With `SMS_PROVIDER=console` (development only), verification and reset codes are
 ## Deployment (Ubuntu VPS, Docker CI/CD)
 
 Every push to `main` runs `.github/workflows/deploy.yml`: it builds both images and publishes
-`ghcr.io/abmak/communityhubaddisweg/api` and `…/web`, tagged with the commit and as `latest`.
+`ghcr.io/abmak/ethioquest/api` and `…/web`, tagged with the commit and as `latest`.
 `.github/workflows/ci.yml` still migrates a disposable PostgreSQL, seeds, typechecks and builds on
 every push and pull request.
 
@@ -187,23 +187,32 @@ the containers whose image changed. A push is live about two minutes after its b
 the pipeline needs no credentials to the machine. The GHCR packages are public, so the server pulls
 them anonymously.
 
-Web Push needs no extra deployment secret: the API generates a VAPID key pair on first use and stores it in the `AppSetting` table. `VAPID_SUBJECT` defaults to `mailto:admin@communityhub.et`; set `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY` in `.env` only when managing the pair elsewhere.
+A host that cannot use the published image keeps its additions in `docker-compose.override.yml`
+next to the compose file; `update.sh` adds that file to the compose invocation when it exists, so the
+compose file from `main` still drives everything the host does not override. The deployment on
+`196.189.155.179` uses one: the container store there fails committing the API image's largest layer
+(`failed commit on ref … no such file or directory`), so the API runs on the last image that pulled
+cleanly — it already carries the same production dependencies — with `code/dist` and `code/prisma`
+mounted over it and the Prisma client regenerated from the mounted schema on start. The web image
+still updates on every roll-out; refresh the API build by replacing those two directories.
 
 ### One-time VPS setup
 
 1. Install Docker Engine + Compose v2 and open port 8080 (plus 80/443 once a domain is set).
 2. Create the deploy directory and put the deploy files in it:
    ```sh
-   mkdir -p ~/communityhub && cd ~/communityhub
-   # copy deploy/docker-compose.prod.yml, deploy/.env.example, deploy/Caddyfile and deploy/update.sh here
+   mkdir -p ~/ethioquest && cd ~/ethioquest
+   # copy deploy/docker-compose.prod.yml, deploy/.env.example, deploy/update.sh here
    sh deploy.sh          # writes .env, generates POSTGRES_PASSWORD, DATABASE_URL and JWT_SECRET
    ```
 3. Install the puller for the current user:
    ```sh
-   (crontab -l 2>/dev/null; echo "*/2 * * * * $HOME/communityhub/update.sh >> $HOME/communityhub/update.log 2>&1") | crontab -
+   (crontab -l 2>/dev/null; echo "*/2 * * * * $HOME/ethioquest/update.sh >> $HOME/ethioquest/update.log 2>&1") | crontab -
    ```
-4. Seed the demo community once:
-   `docker compose -f docker-compose.prod.yml exec backend npm run db:seed`
+4. Give the team an admin: put the staff address in `ADMIN_EMAILS` in `.env`, then register that
+   account in the app — it is promoted to ADMIN on boot. `backend/prisma/seed.ts` creates demo
+   accounts with a published password and is meant for local work only; the server needs the
+   destination catalogue and roles, which the API's boot does not seed.
 
 Without `DOMAIN` in `.env` the web container publishes on port 8080, `update.sh` binds it to
 `0.0.0.0` and sets `COOKIE_SECURE=false` — over plain HTTP a browser discards Secure cookies, so
@@ -270,7 +279,7 @@ release step instead of on container start.
 - Sports & cinema verification: the international feed imported 293 ESPN fixtures in one sync, and `/api/events/sports` returned 30 Premier League, 30 La Liga, 40 Serie A and 27 Bundesliga matches inside the 21-day window. `/sports` rendered all 127 with GMT+3 kick-off times and both club crests per fixture, the La Liga chip filtered to its 30, and a fixture opened its event page. `/api/events/cinemas` returned six popular halls with the curated venues first and grouped the Century Cinema screening; the Cinema page showed both sections, and the Film reviews tab still loaded its posts. The sidebar nested Sport, Cinema and Theatre under Events on desktop and in the mobile menu; `/theatre` opened the events list with the Theatre filter active. No console errors were observed on any of these pages.
 - Gemini verification: all five keys answered a model listing; a Telegram batch was extracted into clean rows ("Halloween Scream 1996 Screening" at Century Cinema, topic CINEMA, `aiExtracted` set) with the token count recorded; quota exhaustion was observed key by key, rotated around, parked with Google's own retry delay and persisted per model so a restart spends nothing on a capped key; when the primary model's daily cap ran out on every key the pool switched to the lighter fallback and kept extracting for one request per sync; the per-key panel rendered calls, successes, quota hits, tokens, cooldown state and the last error; with both models parked a sync fell back to regex and the AI desk reported a readable error while the other sources kept importing.
 - Calendar verification: the Settings toggle round-tripped `calendarPreference` through `PATCH /api/users/me` and `/api/auth/me`, and the UI rendered `ጥቅምት 13, 2019 · 23 Oct 2026` on the settings preview, feed and event dates.
-- Deployment verification: the Deploy workflow built and published both images for the release commit, the cron puller on the VPS moved the stack from the previous pinned tag to the new `:latest` digest within a tick, `docker compose exec backend npm run db:seed` populated the production database, `/api/categories` returned the seeded rooms and the SPA answered 200 over `http://196.189.155.179:8080`.
+- Deployment verification: the stack runs at `https://196.189.155.179/` behind the host nginx, the API container applied all six migrations to a fresh PostgreSQL 18 volume, boot seeded 50,212 quiz questions and the three default prize tiers, the destination catalogue was seeded with 50 places, registration and sign-in worked end to end, `/api/quiz/prizes` returned the configured prizes, the leaderboard's Prize types tab and `/terms` rendered in a browser, and the SPA answered 200 over HTTPS with no console errors.
 - Web Push verification: the VAPID pair was generated once and stayed stable across requests; unauthenticated key requests returned 401; a generated P-256 subscription registered and removed cleanly; and a message, a meetup and an admin announcement each produced a successful encrypted POST to an HTTPS push endpoint (the subscription's `lastUsedAt` advanced) before cleanup. The automated browser profile blocks notification permission, so the final OS notification was not exercised there; the worker build and the browser code were typechecked and bundled.
 
 ## Image credits

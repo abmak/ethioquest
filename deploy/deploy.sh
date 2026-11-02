@@ -37,7 +37,7 @@ if [ -z "$(value DATABASE_URL)" ]; then
   db_user="$(value POSTGRES_USER)"
   db_name="$(value POSTGRES_DB)"
   set_value DATABASE_URL \
-    "postgresql://${db_user:-communityhub}:$(value POSTGRES_PASSWORD)@db:5432/${db_name:-communityhub}?schema=public"
+    "postgresql://${db_user:-ethioquest}:$(value POSTGRES_PASSWORD)@db:5432/${db_name:-ethioquest}?schema=public"
 fi
 
 if [ -z "$(value JWT_SECRET)" ]; then

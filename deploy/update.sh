@@ -16,10 +16,14 @@ if command -v flock >/dev/null 2>&1; then
   flock -n 9 || exit 0
 fi
 
-RAW="https://raw.githubusercontent.com/abmak/communityhubaddisweg/main/deploy"
+RAW="https://raw.githubusercontent.com/abmak/ethioquest/main/deploy"
+# A host that needs to differ from the published images (for example code
+# mounted over a base image) keeps its additions in docker-compose.override.yml
+# next to this file; the compose file from main still drives the rest.
 COMPOSE="docker compose -f docker-compose.prod.yml"
-API_IMAGE="ghcr.io/abmak/communityhubaddisweg/api:latest"
-WEB_IMAGE="ghcr.io/abmak/communityhubaddisweg/web:latest"
+[ -f docker-compose.override.yml ] && COMPOSE="$COMPOSE -f docker-compose.override.yml"
+API_IMAGE="ghcr.io/abmak/ethioquest/api:latest"
+WEB_IMAGE="ghcr.io/abmak/ethioquest/web:latest"
 
 value() { sed -n "s|^$1=||p" .env | tail -n 1; }
 set_value() {
@@ -66,7 +70,12 @@ if [ -z "$(value DOMAIN)" ]; then
   fi
 fi
 
-$COMPOSE pull -q
+# A registry hiccup must not take a healthy stack down, so a failed refresh
+# keeps the images that are already on the host and still applies the compose
+# changes below.
+if ! $COMPOSE pull -q; then
+  echo "$(date -Is) could not refresh images; keeping the local ones" >&2
+fi
 
 # Stay quiet unless the roll-out changed something; cron would otherwise fill
 # the log with "Container ... Running" every couple of minutes.
