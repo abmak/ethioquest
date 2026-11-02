@@ -22,7 +22,15 @@
     "show": "ትዕይንት",
     "shows": "ትዕይንቶች",
     "online source": "የመስመር ላይ ምንጭ",
-    "online sources": "የመስመር ላይ ምንጮች"
+    "online sources": "የመስመር ላይ ምንጮች",
+    "Emoji": "ኢሞጂ",
+    "Recording…": "በመቅዳት ላይ…",
+    "Stop recording": "ቅጂውን አቁም",
+    "Cancel recording": "ቅጂውን ሰርዝ",
+    "Allow microphone access to record a voice note.": "የድምጽ ማስታወሻ ለመቅዳት ለማይክራፎን ፈቃድ ይስጡ።",
+    "Voice notes need HTTPS or a browser with a microphone.": "የድምጽ ማስታወሻዎች HTTPS ወይም ማይክራፎን ያለው አሳሽ ይፈልጋሉ።",
+    "That voice note could not be uploaded.": "ያ የድምጽ ማስታወሻ ሊጫን አልቻለም።",
+    "That photo could not be uploaded.": "ያ ፎቶ ሊጫን አልቻለም።"
   },
   "om": {
     "Prizes awarded for {period}": "Badhaasni {period} kennamu",
@@ -48,7 +56,15 @@
     "show": "agarsiisa",
     "shows": "agarsiisaawwan",
     "online source": "madda onlaayinii",
-    "online sources": "maddoota onlaayinii"
+    "online sources": "maddoota onlaayinii",
+    "Emoji": "Emoji",
+    "Recording…": "Waraabamaa jira…",
+    "Stop recording": "Waraabbii dhaabi",
+    "Cancel recording": "Waraabbii haqi",
+    "Allow microphone access to record a voice note.": "Ergaa sagalee waraabuuf maayikroofoonii hayyami.",
+    "Voice notes need HTTPS or a browser with a microphone.": "Ergaan sagalee HTTPS yookiin biraawzarii maayikroofoonii qabu barbaada.",
+    "That voice note could not be uploaded.": "Ergaan sagalee sun olkaa'amuu hin dandeenye.",
+    "That photo could not be uploaded.": "Suuraan sun olkaa'amuu hin dandeenye."
   },
   "ti": {
     "Addis Gebeta": "አዲስ ገበታ",
@@ -75,6 +91,14 @@
     "show": "ትርኢት",
     "shows": "ትርኢታት",
     "online source": "ኦንላይን ምንጪ",
-    "online sources": "ኦንላይን ምንጭታት"
+    "online sources": "ኦንላይን ምንጭታት",
+    "Emoji": "ኢሞጂ",
+    "Recording…": "ይቕረጽ ኣሎ…",
+    "Stop recording": "ቅርጺ ኣቋርጽ",
+    "Cancel recording": "ቅርጺ ሰርዝ",
+    "Allow microphone access to record a voice note.": "ናይ ድምጺ መልእኽቲ ንምቕራጽ ንማይክሮፎን ፍቓድ ሃብ።",
+    "Voice notes need HTTPS or a browser with a microphone.": "ናይ ድምጺ መልእኽትታት HTTPS ወይ ማይክሮፎን ዘለዎ መርበብ ይሓትታ።",
+    "That voice note could not be uploaded.": "እቲ ናይ ድምጺ መልእኽቲ ክጽዓን ኣይተኻእለን።",
+    "That photo could not be uploaded.": "እቲ ስእሊ ክጽዓን ኣይተኻእለን።"
   }
 }

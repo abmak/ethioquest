@@ -1,21 +1,53 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   Heart,
+  ImagePlus,
   MessageCircle,
+  Mic,
   Search,
   Send,
+  Smile,
   Sparkles,
+  Square,
   UserPlus,
   UserRoundCheck,
   Users,
+  X,
 } from "lucide-react";
 import { Button, Card, EmptyState, PageLoader, SectionHeading } from "../components/ui";
 import { api, apiError } from "../lib/api";
 import { cn, initials, timeAgo } from "../lib/utils";
 import { useAuth } from "../store/auth";
-import type { ChatMessage, ConversationSummary, Member, MemberProfile } from "../types";
+import type {
+  ChatMessage,
+  ConversationSummary,
+  Member,
+  MemberProfile,
+  UploadedPhoto,
+} from "../types";
+
+// Emoji offered by the composer's picker: the ones a chat in Ethiopia reaches
+// for first, not the full Unicode table.
+const CHAT_EMOJI = [
+  "😀", "😄", "😅", "😂", "🙂", "😉", "😍", "😘",
+  "🤗", "🤔", "😎", "🥳", "😢", "😭", "😡", "🙏",
+  "👍", "👏", "💪", "🔥", "🎉", "❤️", "💚", "✨",
+  "☕", "🍲", "🎬", "🎵", "⚽", "📚", "🌄", "🇪🇹",
+];
+
+// Five minutes fits well inside the upload limit and keeps a thread light.
+const MAX_VOICE_SECONDS = 300;
+
+const clock = (totalSeconds: number) =>
+  `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+
+interface PendingVoice {
+  url: string;
+  previewUrl: string;
+  durationMs: number;
+}
 
 /** Circular avatar with a vivid gradient ring and initials fallback. */
 export function Avatar({
@@ -225,18 +257,42 @@ export function PeoplePage() {
 }
 
 function MessageBubble({ message }: { message: ChatMessage }) {
+  const hasMedia = Boolean(message.imageUrl || message.audioUrl);
   return (
     <li className={cn("flex", message.mine ? "justify-end" : "justify-start")}>
       <div
         className={cn(
-          "max-w-[80%] rounded-2xl px-3.5 py-2 text-sm shadow-sm",
+          "max-w-[80%] rounded-2xl text-sm shadow-sm",
+          hasMedia ? "p-2" : "px-3.5 py-2",
           message.mine
             ? "rounded-br-md bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white"
             : "rounded-bl-md border border-line bg-surface text-ink",
         )}
       >
-        <p className="whitespace-pre-line break-words">{message.body}</p>
-        <p className={cn("mt-1 text-[10px]", message.mine ? "text-white/70" : "text-muted")}>
+        {message.imageUrl && (
+          <a href={message.imageUrl} target="_blank" rel="noreferrer" className="block">
+            <img
+              src={message.imageThumbnailUrl ?? message.imageUrl}
+              alt=""
+              loading="lazy"
+              className="max-h-72 w-full min-w-32 rounded-xl object-cover"
+            />
+          </a>
+        )}
+        {message.audioUrl && (
+          <audio controls preload="metadata" src={message.audioUrl} className="mt-1 w-64 max-w-full" />
+        )}
+        {message.body && (
+          <p className={cn("whitespace-pre-line break-words", hasMedia && "px-1.5 pt-1.5")}>
+            {message.body}
+          </p>
+        )}
+        <p
+          className={cn(
+            "px-1.5 pb-0.5 pt-1 text-[10px]",
+            message.mine ? "text-white/70" : "text-muted",
+          )}
+        >
           {timeAgo(message.createdAt)}
         </p>
       </div>
@@ -248,9 +304,20 @@ function Thread({ userId }: { userId: string }) {
   const [member, setMember] = useState<(MemberProfile | { id: string; displayName: string; username: string; avatarUrl: string | null; followedByMe: boolean }) | null>(null);
   const [messages, setMessages] = useState<ChatMessage[] | null>(null);
   const [draft, setDraft] = useState("");
+  const [photo, setPhoto] = useState<UploadedPhoto | null>(null);
+  const [voice, setVoice] = useState<PendingVoice | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [showEmoji, setShowEmoji] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const elapsedRef = useRef(0);
+  const discardRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -275,16 +342,152 @@ function Thread({ userId }: { userId: string }) {
     bottomRef.current?.scrollIntoView({ block: "end" });
   }, [messages]);
 
+  // A running recording keeps its own clock; the ref lets the stop handler know
+  // how long the clip was without re-reading stale state.
+  useEffect(() => {
+    if (!recording) return;
+    const id = window.setInterval(() => {
+      elapsedRef.current += 1;
+      setElapsed(elapsedRef.current);
+      if (elapsedRef.current >= MAX_VOICE_SECONDS) {
+        setRecording(false);
+        recorderRef.current?.stop();
+      }
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [recording]);
+
+  useEffect(
+    () => () => {
+      recorderRef.current?.stream.getTracks().forEach((track) => track.stop());
+    },
+    [],
+  );
+
+  const addEmoji = (emoji: string) => {
+    const field = textareaRef.current;
+    const start = field?.selectionStart ?? draft.length;
+    const end = field?.selectionEnd ?? draft.length;
+    setDraft(`${draft.slice(0, start)}${emoji}${draft.slice(end)}`.slice(0, 2000));
+    field?.focus();
+    const caret = Math.min(start + emoji.length, 2000);
+    requestAnimationFrame(() => field?.setSelectionRange(caret, caret));
+  };
+
+  const pickPhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    try {
+      const form = new FormData();
+      form.append("files", file);
+      const res = await api.post<{ photos: UploadedPhoto[] }>("/api/media", form);
+      setPhoto(res.data.photos[0] ?? null);
+    } catch (err) {
+      setError(apiError(err, "That photo could not be uploaded."));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const uploadVoice = async (blob: Blob) => {
+    if (discardRef.current) {
+      discardRef.current = false;
+      return;
+    }
+    const durationMs = elapsedRef.current * 1000;
+    setUploading(true);
+    setError(null);
+    try {
+      const extension = blob.type.includes("mp4") ? "m4a" : "webm";
+      const form = new FormData();
+      form.append(
+        "file",
+        new File([blob], `voice-${Date.now()}.${extension}`, { type: blob.type || "audio/webm" }),
+      );
+      const res = await api.post<{ audio: { url: string } }>("/api/media/audio", form);
+      setVoice({ url: res.data.audio.url, previewUrl: URL.createObjectURL(blob), durationMs });
+    } catch (err) {
+      setError(apiError(err, "That voice note could not be uploaded."));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const startRecording = async () => {
+    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
+      setError("Voice notes need HTTPS or a browser with a microphone.");
+      return;
+    }
+    setError(null);
+    setShowEmoji(false);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (event) => {
+        if (event.data.size > 0) chunks.push(event.data);
+      };
+      recorder.onstop = () => {
+        stream.getTracks().forEach((track) => track.stop());
+        recorderRef.current = null;
+        void uploadVoice(new Blob(chunks, { type: recorder.mimeType || "audio/webm" }));
+      };
+      recorderRef.current = recorder;
+      discardRef.current = false;
+      elapsedRef.current = 0;
+      setElapsed(0);
+      setRecording(true);
+      recorder.start();
+    } catch {
+      setError("Allow microphone access to record a voice note.");
+    }
+  };
+
+  const stopRecording = () => {
+    setRecording(false);
+    recorderRef.current?.stop();
+  };
+
+  const cancelRecording = () => {
+    discardRef.current = true;
+    setRecording(false);
+    recorderRef.current?.stop();
+  };
+
   const send = async (event: FormEvent) => {
     event.preventDefault();
     const body = draft.trim();
-    if (!body) return;
+    if (!body && !photo && !voice) return;
+    if (uploading || recording) return;
     setBusy(true);
     setError(null);
     try {
-      const res = await api.post<{ message: ChatMessage }>(`/api/social/messages/${userId}`, { body });
+      const payload: {
+        body?: string;
+        imageUrl?: string;
+        imageThumbnailUrl?: string;
+        audioUrl?: string;
+        audioDurationMs?: number;
+      } = {};
+      if (body) payload.body = body;
+      if (photo) {
+        payload.imageUrl = photo.url;
+        payload.imageThumbnailUrl = photo.thumbnailUrl;
+      }
+      if (voice) {
+        payload.audioUrl = voice.url;
+        payload.audioDurationMs = voice.durationMs;
+      }
+      const res = await api.post<{ message: ChatMessage }>(`/api/social/messages/${userId}`, payload);
       setMessages((current) => [...(current ?? []), res.data.message]);
       setDraft("");
+      setPhoto(null);
+      if (voice) URL.revokeObjectURL(voice.previewUrl);
+      setVoice(null);
+      setShowEmoji(false);
     } catch (err) {
       setError(apiError(err));
     } finally {
@@ -339,25 +542,146 @@ function Thread({ userId }: { userId: string }) {
 
       {error && <p role="alert" className="px-4 pt-2 text-xs text-rose-600">{error}</p>}
 
-      <form onSubmit={send} className="flex items-end gap-2 border-t border-line p-3">
-        <textarea
-          value={draft}
-          onChange={(event) => setDraft(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === "Enter" && !event.shiftKey) {
-              event.preventDefault();
-              void send(event);
-            }
-          }}
-          rows={1}
-          maxLength={2000}
-          placeholder="Write a message…"
-          className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-surface px-3 py-2.5 text-base outline-none focus:border-violet-500"
+      <form onSubmit={send} className="border-t border-line p-3">
+        {(photo || voice) && (
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            {photo && (
+              <span className="relative h-16 w-20 overflow-hidden rounded-xl border border-line">
+                <img src={photo.thumbnailUrl} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setPhoto(null)}
+                  aria-label="Remove photo"
+                  className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-rose-600"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
+            {voice && (
+              <span className="flex items-center gap-2 rounded-xl border border-line bg-raised/60 px-2 py-1.5">
+                <audio controls src={voice.previewUrl} className="h-8 w-44" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    URL.revokeObjectURL(voice.previewUrl);
+                    setVoice(null);
+                  }}
+                  aria-label="Remove voice note"
+                  className="flex h-7 w-7 items-center justify-center rounded-full text-muted hover:bg-rose-50 hover:text-rose-700"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </span>
+            )}
+            {uploading && <span className="text-xs text-muted">Uploading…</span>}
+          </div>
+        )}
+
+        {recording ? (
+          <div className="flex items-center gap-3 rounded-2xl border border-rose-300 bg-rose-50 px-3 py-2.5 dark:border-rose-400/40 dark:bg-rose-500/10">
+            <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-rose-600" aria-hidden />
+            <span className="font-mono text-sm font-semibold text-rose-700 dark:text-rose-300">
+              {clock(elapsed)}
+            </span>
+            <span className="text-xs text-rose-700/80 dark:text-rose-200/80">Recording…</span>
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                onClick={cancelRecording}
+                aria-label="Cancel recording"
+                className="flex h-10 w-10 items-center justify-center rounded-xl text-rose-700 hover:bg-rose-100 dark:text-rose-200 dark:hover:bg-rose-500/20"
+              >
+                <X className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={stopRecording}
+                aria-label="Stop recording"
+                className="flex h-10 w-10 items-center justify-center rounded-xl bg-rose-600 text-white hover:bg-rose-700"
+              >
+                <Square className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-end gap-1.5">
+            <div className="relative">
+              {showEmoji && (
+                <div className="absolute bottom-12 left-0 z-20 grid w-64 grid-cols-8 gap-0.5 rounded-2xl border border-line bg-surface p-2 shadow-xl">
+                  {CHAT_EMOJI.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => addEmoji(emoji)}
+                      className="rounded-lg p-1 text-lg leading-none hover:bg-subtle"
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowEmoji((open) => !open)}
+                aria-label="Emoji"
+                aria-expanded={showEmoji}
+                className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-violet-700"
+              >
+                <Smile className="h-5 w-5" />
+              </button>
+            </div>
+            <button
+              type="button"
+              onClick={() => fileRef.current?.click()}
+              aria-label="Photo"
+              disabled={uploading || Boolean(photo)}
+              className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-violet-700 disabled:opacity-40"
+            >
+              <ImagePlus className="h-5 w-5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => void startRecording()}
+              aria-label="Record a voice note"
+              disabled={uploading || Boolean(voice)}
+              className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-violet-700 disabled:opacity-40"
+            >
+              <Mic className="h-5 w-5" />
+            </button>
+            <textarea
+              ref={textareaRef}
+              value={draft}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void send(event);
+                }
+              }}
+              rows={1}
+              maxLength={2000}
+              placeholder="Write a message…"
+              className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-surface px-3 py-2.5 text-base outline-none focus:border-violet-500"
+            />
+            <Button
+              type="submit"
+              loading={busy}
+              disabled={(!draft.trim() && !photo && !voice) || uploading}
+              className="min-h-11 px-4"
+            >
+              <Send className="h-4 w-4" aria-hidden />
+              <span className="sr-only">Send</span>
+            </Button>
+          </div>
+        )}
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(event) => void pickPhoto(event)}
         />
-        <Button type="submit" loading={busy} disabled={!draft.trim()} className="min-h-11 px-4">
-          <Send className="h-4 w-4" aria-hidden />
-          <span className="sr-only">Send</span>
-        </Button>
       </form>
     </div>
   );
@@ -422,7 +746,12 @@ function ConversationList({ activeId }: { activeId?: string }) {
                   <span className="mt-0.5 flex items-center justify-between gap-2">
                     <span className="truncate text-xs text-muted">
                       {conversation.lastMessage.mine ? "You: " : ""}
-                      {conversation.lastMessage.body}
+                      {conversation.lastMessage.body ||
+                        (conversation.lastMessage.hasVoice
+                          ? "Voice note"
+                          : conversation.lastMessage.hasPhoto
+                            ? "Photo"
+                            : "")}
                     </span>
                     {conversation.unread > 0 && (
                       <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-rose-500 px-1 text-[10px] font-bold text-white">

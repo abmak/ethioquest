@@ -329,7 +329,13 @@ model DirectMessage {
   id          String    @id @default(cuid())
   senderId    String
   recipientId String
+  // Empty when the message is only a photo or a voice note.
   body        String    @db.Text
+  // Attachments point at /uploads, the same store as post photos.
+  imageUrl          String?
+  imageThumbnailUrl String?
+  audioUrl          String?
+  audioDurationMs   Int?
   readAt      DateTime?
   createdAt   DateTime  @default(now())
 

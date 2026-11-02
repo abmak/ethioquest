@@ -188,7 +188,13 @@ socialRouter.get(
     const seen = new Set<string>();
     const conversations = [] as {
       member: (typeof recent)[number]["sender"];
-      lastMessage: { body: string; createdAt: Date; mine: boolean };
+      lastMessage: {
+        body: string;
+        createdAt: Date;
+        mine: boolean;
+        hasPhoto: boolean;
+        hasVoice: boolean;
+      };
       unread: number;
     }[];
 
@@ -199,7 +205,13 @@ socialRouter.get(
       seen.add(partner.id);
       conversations.push({
         member: partner,
-        lastMessage: { body: message.body, createdAt: message.createdAt, mine },
+        lastMessage: {
+          body: message.body,
+          createdAt: message.createdAt,
+          mine,
+          hasPhoto: Boolean(message.imageUrl),
+          hasVoice: Boolean(message.audioUrl),
+        },
         unread: unreadBy.get(partner.id) ?? 0,
       });
     }
@@ -256,12 +268,31 @@ socialRouter.get(
         body: m.body,
         createdAt: m.createdAt,
         mine: m.senderId === me,
+        imageUrl: m.imageUrl,
+        imageThumbnailUrl: m.imageThumbnailUrl,
+        audioUrl: m.audioUrl,
+        audioDurationMs: m.audioDurationMs,
       })),
     });
   }),
 );
 
-const sendSchema = z.object({ body: z.string().trim().min(1, "Write a message").max(2000) });
+// Attachments must be files this API stored, so a member cannot point a
+// message at someone else's server.
+const UPLOAD_PATH = /^\/uploads\/[A-Za-z0-9._-]+$/;
+
+const sendSchema = z
+  .object({
+    body: z.string().trim().max(2000).optional(),
+    imageUrl: z.string().regex(UPLOAD_PATH, "Upload the photo first").optional(),
+    imageThumbnailUrl: z.string().regex(UPLOAD_PATH, "Upload the photo first").optional(),
+    audioUrl: z.string().regex(UPLOAD_PATH, "Upload the voice note first").optional(),
+    audioDurationMs: z.coerce.number().int().min(0).max(600_000).optional(),
+  })
+  .refine((value) => Boolean(value.body || value.imageUrl || value.audioUrl), {
+    message: "Write a message or attach a photo or voice note.",
+    path: ["body"],
+  });
 
 socialRouter.post(
   "/messages/:userId",
@@ -279,11 +310,31 @@ socialRouter.post(
     });
     if (!partner || partner.banned) throw ApiError.notFound("Member not found");
 
+    const input = req.body as z.infer<typeof sendSchema>;
     const message = await prisma.directMessage.create({
-      data: { senderId: me, recipientId: partnerId, body: (req.body as { body: string }).body },
+      data: {
+        senderId: me,
+        recipientId: partnerId,
+        body: input.body ?? "",
+        imageUrl: input.imageUrl ?? null,
+        imageThumbnailUrl: input.imageUrl
+          ? input.imageThumbnailUrl ?? input.imageUrl
+          : null,
+        audioUrl: input.audioUrl ?? null,
+        audioDurationMs: input.audioUrl ? input.audioDurationMs ?? null : null,
+      },
     });
     res.status(201).json({
-      message: { id: message.id, body: message.body, createdAt: message.createdAt, mine: true },
+      message: {
+        id: message.id,
+        body: message.body,
+        createdAt: message.createdAt,
+        mine: true,
+        imageUrl: message.imageUrl,
+        imageThumbnailUrl: message.imageThumbnailUrl,
+        audioUrl: message.audioUrl,
+        audioDurationMs: message.audioDurationMs,
+      },
     });
   }),
 );

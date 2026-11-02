@@ -384,7 +384,13 @@ export interface MemberProfile {
 
 export interface ConversationSummary {
   member: Omit<Member, "followers" | "stories" | "followedByMe">;
-  lastMessage: { body: string; createdAt: string; mine: boolean };
+  lastMessage: {
+    body: string;
+    createdAt: string;
+    mine: boolean;
+    hasPhoto: boolean;
+    hasVoice: boolean;
+  };
   unread: number;
 }
 
@@ -393,6 +399,10 @@ export interface ChatMessage {
   body: string;
   createdAt: string;
   mine: boolean;
+  imageUrl: string | null;
+  imageThumbnailUrl: string | null;
+  audioUrl: string | null;
+  audioDurationMs: number | null;
 }
 
 export interface UploadedPhoto {
