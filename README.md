@@ -252,6 +252,23 @@ would make renewal fail. The
 `/.well-known/acme-challenge/` path of the bare-IP port-80 vhost is served from `/var/www/acme`,
 which is what the challenge needs.
 
+### Public domain
+
+`ethioquest.jobsethiopia.et` points at this server, but the host nginx only answers it through the
+bare-IP `default_server` block, so browsers get the IP certificate and plain `http://` has no vhost
+of its own. `deploy/domain-setup.sh` fixes that — one run as root, safe to repeat:
+
+```sh
+sudo sh ~/ethioquest/domain-setup.sh            # ethioquest.jobsethiopia.et by default
+```
+
+It writes an `ethioquest-domain` vhost with a port-80 block (ACME challenges plus a 301 to https)
+and a port-443 block that proxies the web container, reusing any certificate on the host that
+already covers the name — a wildcard for `jobsethiopia.et` included — and otherwise issuing one
+through Let's Encrypt. It then sets `CLIENT_ORIGIN=https://ethioquest.jobsethiopia.et`, adds the
+domain to `CORS_EXTRA_ORIGINS`, keeps `COOKIE_SECURE=true` and recreates the backend. The bare-IP
+vhost and the other sites on the box keep their own `server_name` blocks.
+
 Run the build by hand from **Actions → Deploy → Run workflow**; the server picks the new images up
 on its next tick. `.env` lives only on the server and is never overwritten. Migrations run when the
 API container starts. `deploy/deploy.sh` and the `VPS_*` repository secrets are only needed for a
