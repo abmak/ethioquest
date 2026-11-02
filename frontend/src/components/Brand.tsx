@@ -1,192 +1,121 @@
 import { useId } from "react";
 import { cn } from "../lib/utils";
-import { BRAND } from "../lib/brand";
 
 /**
- * The አዲስ ገበታ (Addis Gebeta) Animated Communal Emblem:
- * Represents the Ethiopian "Gebeta" (communal gathering table) bringing together
- * the 4 pillars of the community: Places & Discovery, Events, Culture & Joke Time,
- * and Social Networking. Features smooth revolving community nodes, a counter-rotating
- * woven tilet crown, and a pulsating golden hearth at its center.
+ * Ethio Quest mark: a tilted gem badge with a coffee-bean core, a highland
+ * sunburst and an orbiting ring. Everything animates gently via CSS so the
+ * logo feels alive without a video or image asset.
  */
-export function BrandMark({ className, glow }: { className?: string; glow?: boolean }) {
-  const uid = useId().replace(/[^a-zA-Z0-9_-]/g, "");
-  const gold = `gebeta-gold-${uid}`;
-  const green = `gebeta-green-${uid}`;
-  const hearth = `gebeta-hearth-${uid}`;
-
+export function BrandMark({ className }: { className?: string }) {
+  const id = useId().replace(/:/g, "");
   return (
-    <span
-      className={cn(
-        "brand-mark relative inline-flex shrink-0 items-center justify-center cursor-pointer select-none",
-        glow && "drop-shadow-[0_12px_28px_rgba(15,107,58,0.4)]",
-        className ?? "h-10 w-10",
-      )}
-      aria-label="አዲስ ገበታ Logo"
-      title="አዲስ ገበታ · Addis Gebeta"
-    >
-      {glow ? <span className="gebeta-halo absolute inset-[-14%] rounded-[38%]" /> : null}
+    <svg viewBox="0 0 64 64" className={cn("brand-mark overflow-visible", className)} aria-hidden>
+      <defs>
+        <linearGradient id={`${id}-badge`} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#0f766e" />
+          <stop offset="38%" stopColor="#16a34a" />
+          <stop offset="72%" stopColor="#f59e0b" />
+          <stop offset="100%" stopColor="#db2777" />
+        </linearGradient>
+        <linearGradient id={`${id}-star`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#fff7d6" />
+          <stop offset="100%" stopColor="#fbbf24" />
+        </linearGradient>
+        <radialGradient id={`${id}-glow`} cx="0.3" cy="0.2" r="0.8">
+          <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
+          <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+        </radialGradient>
+      </defs>
 
-      <svg viewBox="0 0 64 64" className="brand-mark-svg relative h-full w-full">
-        <defs>
-          <linearGradient id={gold} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#fef3c7" />
-            <stop offset="35%" stopColor="#f59e0b" />
-            <stop offset="70%" stopColor="#d97706" />
-            <stop offset="100%" stopColor="#92400e" />
-          </linearGradient>
-          <radialGradient id={green} cx="30%" cy="25%" r="85%">
-            <stop offset="0%" stopColor="#15803d" />
-            <stop offset="45%" stopColor="#0d5232" />
-            <stop offset="80%" stopColor="#07301d" />
-            <stop offset="100%" stopColor="#041a10" />
-          </radialGradient>
-          <radialGradient id={hearth} cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#ffffff" />
-            <stop offset="40%" stopColor="#fde68a" />
-            <stop offset="75%" stopColor="#f59e0b" />
-            <stop offset="100%" stopColor="#b45309" />
-          </radialGradient>
-        </defs>
+      {/* Soft halo behind the badge. */}
+      <circle cx="32" cy="32" r="27" fill={`url(#${id}-glow)`} />
 
-        {/* 1. Base Gebeta Table Platter / Plate Foundation */}
-        <rect x="2" y="2" width="60" height="60" rx="19" fill={`url(#${green})`} />
-        <rect
-          x="2.5"
-          y="2.5"
-          width="59"
-          height="59"
-          rx="18.5"
-          fill="none"
-          stroke={`url(#${gold})`}
-          strokeOpacity="0.4"
-          strokeWidth="1.2"
-        />
-
-        {/* 2. Concentric Communal Ring (Woven Rim) */}
+      {/* Rotating dashed orbit in the Ethiopian palette. */}
+      <g className="brand-orbit">
         <circle
           cx="32"
           cy="32"
-          r="23"
+          r="29"
           fill="none"
-          stroke={`url(#${gold})`}
-          strokeOpacity="0.25"
-          strokeWidth="1"
-          strokeDasharray="3.5 2.5"
+          stroke="#f59e0b"
+          strokeOpacity="0.55"
+          strokeWidth="1.6"
+          strokeDasharray="3 7"
+          strokeLinecap="round"
         />
+        <circle cx="32" cy="3" r="2.4" fill="#db2777" />
+        <circle cx="32" cy="61" r="1.8" fill="#0ea5e9" />
+      </g>
 
-        {/* 3. The Animated Revolving Community Orbit (4 Service Pillars: Places, Events, Culture, Social) */}
-        <g className="gebeta-orbit">
-          {/* Subtle orbital path */}
-          <circle
-            cx="32"
-            cy="32"
-            r="19"
-            fill="none"
-            stroke={`url(#${gold})`}
-            strokeOpacity="0.28"
-            strokeWidth="0.8"
-          />
+      {/* Gem badge: a rounded diamond, rotated a few degrees. */}
+      <g transform="rotate(-8 32 32)">
+        <rect x="10" y="10" width="44" height="44" rx="15" fill={`url(#${id}-badge)`} />
+        <rect x="10" y="10" width="44" height="44" rx="15" fill="none" stroke="#ffffff" strokeOpacity="0.35" strokeWidth="1.2" />
+        {/* Highlight sliver on the top edge. */}
+        <path d="M17 20c4-5 10-7 16-7" stroke="#ffffff" strokeOpacity="0.5" strokeWidth="2.2" strokeLinecap="round" fill="none" />
 
-          {/* Node 1: North (Places & Discovery) */}
-          <circle cx="32" cy="13" r="2.8" fill={`url(#${gold})`} />
-          <path d="M32 9 L34 13 L32 17 L30 13 Z" fill="#ffffff" fillOpacity="0.85" />
-
-          {/* Node 2: East (Events & Gatherings) */}
-          <circle cx="51" cy="32" r="2.8" fill={`url(#${gold})`} />
-          <path d="M51 28 L53 32 L51 36 L49 32 Z" fill="#ffffff" fillOpacity="0.85" />
-
-          {/* Node 3: South (Culture & Joke Time) */}
-          <circle cx="32" cy="51" r="2.8" fill={`url(#${gold})`} />
-          <path d="M32 47 L34 51 L32 55 L30 51 Z" fill="#ffffff" fillOpacity="0.85" />
-
-          {/* Node 4: West (Community & Networking) */}
-          <circle cx="13" cy="32" r="2.8" fill={`url(#${gold})`} />
-          <path d="M13 28 L15 32 L13 36 L11 32 Z" fill="#ffffff" fillOpacity="0.85" />
+        {/* Highland sunburst behind the core. */}
+        <g className="brand-star" opacity="0.9">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <rect
+              key={i}
+              x="31"
+              y="15"
+              width="1.8"
+              height="6"
+              rx="0.9"
+              fill={`url(#${id}-star)`}
+              transform={`rotate(${i * 45} 32 32)`}
+            />
+          ))}
         </g>
 
-        {/* 4. Counter-Rotating Ethiopian Tilet Star Crown */}
-        <g className="gebeta-inner-crown">
-          {/* 8-point geometric star diamond */}
-          <path
-            d="M32 19 L35.5 28.5 L45 32 L35.5 35.5 L32 45 L28.5 35.5 L19 32 L28.5 28.5 Z"
-            fill="none"
-            stroke={`url(#${gold})`}
-            strokeWidth="1.2"
-            strokeOpacity="0.75"
-          />
-          <path
-            d="M32 22 L34.5 29.5 L42 32 L34.5 34.5 L32 42 L29.5 34.5 L22 32 L29.5 29.5 Z"
-            fill="#062919"
-            fillOpacity="0.65"
-          />
-        </g>
+        {/* Coffee bean core: the shared table at the heart of the brand. */}
+        <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="#3b1f12" />
+        <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="none" stroke="#fde68a" strokeOpacity="0.65" strokeWidth="1.2" />
+        <path d="M32 22c-4 5-4 15 0 20" stroke="#fde68a" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.85" />
+        <circle cx="27.5" cy="26.5" r="2" fill="#ffffff" opacity="0.35" />
+      </g>
 
-        {/* 5. Live Community Ripple Wave */}
-        <circle cx="32" cy="32" r="8" fill="none" stroke="#fef08a" strokeWidth="1" className="gebeta-ripple" />
-
-        {/* 6. Central Table Hearth (Pulsating Golden Heart / የገበታው እምብርት) */}
-        <g className="gebeta-core-pulse">
-          <circle cx="32" cy="32" r="6" fill={`url(#${hearth})`} />
-          {/* Center sparkle */}
-          <path
-            d="M32 28.5 L33.2 32 L32 35.5 L30.8 32 Z"
-            fill="#ffffff"
-          />
-          <path
-            d="M28.5 32 L32 30.8 L35.5 32 L32 33.2 Z"
-            fill="#ffffff"
-          />
-        </g>
-      </svg>
-    </span>
+      {/* Counter-rotating sparkle ring for depth. */}
+      <g className="brand-orbit-reverse">
+        <circle cx="32" cy="32" r="23" fill="none" stroke="#ffffff" strokeOpacity="0.25" strokeWidth="0.8" strokeDasharray="1 6" />
+      </g>
+    </svg>
   );
 }
 
 /**
- * The lockup: the Amharic name "አዲስ ገበታ", a pulsating live gold dot and an optional descriptor.
+ * Animated wordmark. "Ethio" stays ink-coloured for contrast, "Quest" carries
+ * the moving gradient, with a woven tilet underline beneath.
  */
-export function Wordmark({
+export function BrandLockup({
   className,
-  compact,
-  subtitle = "Addis Gebeta",
+  size = "md",
+  tagline = false,
 }: {
   className?: string;
-  compact?: boolean;
-  subtitle?: string;
+  size?: "sm" | "md" | "lg";
+  tagline?: boolean;
 }) {
+  const markSize = { sm: "h-8 w-8", md: "h-10 w-10", lg: "h-16 w-16" }[size];
+  const textSize = { sm: "text-base", md: "text-xl", lg: "text-3xl" }[size];
+
   return (
-    <span className={cn("flex min-w-0 flex-col select-none", className)}>
-      <span className="flex min-w-0 items-baseline gap-1.5">
-        <span
-          className={cn(
-            "truncate font-ethiopic font-bold leading-tight tracking-tight text-ink",
-            compact ? "text-base" : "text-lg",
-          )}
-          lang="am"
-        >
-          {BRAND.name}
+    <span className={cn("brand-lockup inline-flex items-center gap-2.5", className)}>
+      <BrandMark className={cn(markSize, "brand-float")} />
+      <span className="flex flex-col leading-none">
+        <span className={cn("font-display font-black tracking-tight", textSize)}>
+          <span className="text-ink">Ethio</span>{" "}
+          <span className="brand-wordmark">Quest</span>
         </span>
-        <span
-          className="brand-dot inline-block h-2 w-2 shrink-0 rounded-full bg-accent-500 shadow-[0_0_8px_rgba(233,185,73,0.7)]"
-          title="Live Community"
-        />
+        {tagline && (
+          <span className="mt-1 text-[10px] font-bold uppercase tracking-[0.28em] text-muted">
+            Learn · Explore · Share
+          </span>
+        )}
+        <span className="brand-underline mt-1 h-[3px] w-full rounded-full" aria-hidden />
       </span>
-      {!compact && (
-        <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.24em] text-muted">
-          {subtitle}
-        </span>
-      )}
     </span>
   );
-}
-
-/** Slim green–gold–red rule used as a signature divider. */
-export function EthBand({ className }: { className?: string }) {
-  return <span aria-hidden="true" className={cn("eth-band block h-[3px] rounded-full", className)} />;
-}
-
-/** Woven diamond strip used behind hero sections. */
-export function TiletStrip({ className }: { className?: string }) {
-  return <span aria-hidden="true" className={cn("tilet-strip block h-2", className)} />;
 }

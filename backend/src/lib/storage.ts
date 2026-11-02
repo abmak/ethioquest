@@ -15,55 +15,34 @@ export function mediaUrl(filename: string): string {
   return `/uploads/${filename}`;
 }
 
-function absolutePathFor(url: string): string | null {
-  if (!url.startsWith("/uploads/")) return null;
-  const filename = path.basename(url);
-  if (!filename) return null;
-  return path.join(uploadDir, filename);
-}
-
-export interface ImageProcessingResult {
-  width: number | null;
-  height: number | null;
-  thumbnailUrl: string | null;
-}
-
-export async function processImage(file: Express.Multer.File): Promise<ImageProcessingResult> {
+/**
+ * Writes a resized, compressed copy and returns its URL. The original upload
+ * is kept as the full-size photo; the copy keeps feeds fast on mobile data.
+ */
+export async function processImage(
+  file: Express.Multer.File,
+): Promise<{ thumbnailUrl: string | null; width: number | null; height: number | null }> {
   try {
     const metadata = await sharp(file.path).metadata();
-    const thumbName = `${path.parse(file.filename).name}-thumb.webp`;
-
+    const name = `${path.parse(file.filename).name}-thumb.webp`;
     await sharp(file.path)
       .rotate()
-      .resize({ width: 800, height: 800, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 78 })
-      .toFile(path.join(uploadDir, thumbName));
-
-    return {
-      width: metadata.width ?? null,
-      height: metadata.height ?? null,
-      thumbnailUrl: mediaUrl(thumbName),
-    };
+      .resize({ width: 1280, height: 1280, fit: "inside", withoutEnlargement: true })
+      .webp({ quality: 80 })
+      .toFile(path.join(uploadDir, name));
+    return { thumbnailUrl: mediaUrl(name), width: metadata.width ?? null, height: metadata.height ?? null };
   } catch (error) {
     logger.warn({ err: error, file: file.filename }, "Image processing failed; serving original");
-    return { width: null, height: null, thumbnailUrl: null };
+    return { thumbnailUrl: null, width: null, height: null };
   }
 }
 
-export async function removeUploads(urls: Array<string | null | undefined>): Promise<void> {
-  await Promise.all(
-    urls.map(async (url) => {
-      if (!url) return;
-      const filePath = absolutePathFor(url);
-      if (!filePath) return;
-      try {
-        await fs.unlink(filePath);
-      } catch (error) {
-        const code = (error as NodeJS.ErrnoException).code;
-        if (code !== "ENOENT") {
-          logger.warn({ err: error, url }, "Could not remove upload");
-        }
-      }
-    }),
-  );
+export async function removeUpload(url: string): Promise<void> {
+  const filename = path.basename(url);
+  if (!filename) return;
+  try {
+    await fs.unlink(path.join(uploadDir, filename));
+  } catch {
+    // A missing file is not an error we need to report.
+  }
 }

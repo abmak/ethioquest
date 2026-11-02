@@ -1,875 +1,561 @@
 export type Role = "USER" | "MODERATOR" | "ADMIN";
-export type CategoryKind = "DISCUSSION" | "MOVIE" | "BOOK" | "HIKE";
-export type Difficulty = "EASY" | "MODERATE" | "HARD" | "EXPERT";
-export type PlaceKind =
-  | "CINEMA"
-  | "THEATRE"
-  | "HOTEL"
-  | "HIKING"
-  | "CAFE"
-  | "RESTAURANT"
-  | "GYM"
-  | "STADIUM"
-  | "GALLERY"
-  | "LIBRARY"
-  | "HOSPITAL"
-  | "PHARMACY"
-  | "GAS_STATION"
-  | "SCHOOL"
-  | "PUBLIC_TOILET"
-  | "PARKING"
-  | "EV_CHARGING"
-  | "TRANSIT_STOP"
-  | "BANK"
-  | "ATM";
-
-export interface Place {
-  id: string;
-  slug: string;
-  name: string;
-  kind: PlaceKind;
-  city: string;
-  area: string | null;
-  address: string | null;
-  description: string;
-  lat: number;
-  lng: number;
-  rating: number;
-  reviewCount: number;
-  priceLevel: number | null;
-  tags: string[];
-  highlight: string | null;
-  featured: boolean;
-  distanceKm: number | null;
-}
-
-export interface PlaceDetailResponse {
-  place: Place;
-  nearby: Place[];
-}
-
-export interface PlacesResponse {
-  places: Place[];
-  filters: {
-    kinds: { kind: PlaceKind; count: number }[];
-    cities: string[];
-    total: number;
-    origin: { lat: number; lng: number } | null;
-  };
-}
-
-/** A neighbourhood centroid used when the device cannot share GPS. */
-export interface PlaceArea {
-  city: string;
-  area: string;
-  lat: number;
-  lng: number;
-  count: number;
-}
-
-export interface PlaceAreasResponse {
-  areas: PlaceArea[];
-}
-
-/** Closest practical stops around a pin, grouped by service kind. */
-export interface NearbyServiceGroup {
-  kind: PlaceKind;
-  places: Place[];
-  nearestKm: number | null;
-}
-
-export interface NearbyServicesResponse {
-  origin: { lat: number; lng: number };
-  radiusKm: number;
-  groups: NearbyServiceGroup[];
-  total: number;
-}
 
 export interface User {
   id: string;
+  email: string;
   username: string;
   displayName: string;
-  avatarUrl: string | null;
-  coverUrl?: string | null;
-  bio?: string | null;
-  interests?: string[];
   role: Role;
-  calendarPreference?: "GREGORIAN" | "ETHIOPIAN";
-  showPresence?: boolean;
-  lastSeenAt?: string | null;
-  createdAt?: string;
-  email?: string;
-  phone?: string | null;
-  phoneVerifiedAt?: string | null;
-  online?: boolean;
-  isFollowing?: boolean;
-  isFollowedBy?: boolean;
-  isMe?: boolean;
-  banned?: boolean;
-  postCount?: number;
-  followerCount?: number;
-  _count?: { posts?: number; followers?: number; following?: number };
+  region: string | null;
+  bio: string | null;
+  avatarUrl?: string | null;
+  /** Capabilities of the user's role, sent by the API for staff accounts. */
+  permissions?: string[];
 }
 
-export interface Category {
+export type QuestionType = "CHOICE" | "TRUE_FALSE" | "MATCHING" | "IMAGE";
+
+export interface QuizQuestion {
   id: string;
-  slug: string;
-  name: string;
-  description: string;
-  icon: string;
-  color: string;
-  kind: CategoryKind;
-  sortOrder: number;
-  postCount?: number;
-  lastPostAt?: string | null;
-}
-
-export interface Media {
-  id: string;
-  kind: "IMAGE" | "AUDIO";
-  url: string;
-  thumbnailUrl: string | null;
-  mimeType: string;
-  sizeBytes: number;
-  width: number | null;
-  height: number | null;
-  durationMs: number | null;
-}
-
-export interface MovieDetail {
-  id?: string;
-  movieTitle: string;
-  director: string | null;
-  year: number | null;
-  genre: string | null;
-  synopsis: string | null;
-  trailerUrl: string | null;
-  posterUrl: string | null;
-}
-
-export interface BookDetail {
-  id?: string;
-  bookTitle: string;
-  author: string | null;
-  genre: string | null;
-  synopsis: string | null;
-  coverUrl: string | null;
-}
-
-export interface HikeDetail {
-  id?: string;
-  location: string;
-  difficulty: Difficulty;
-  distanceKm: number | null;
-  durationHours: number | null;
-  tips: string | null;
-}
-
-export interface PollOption {
-  id: string;
-  label: string;
-  voteCount: number;
-}
-
-export interface Poll {
-  id: string;
-  question: string;
-  allowMultiple: boolean;
-  endsAt: string | null;
-  totalVotes: number;
-  options: PollOption[];
-  myOptionId: string | null;
-}
-
-export interface Post {
-  id: string;
-  authorId: string;
-  categoryId: string;
-  title: string | null;
-  body: string;
-  likeCount: number;
-  commentCount: number;
-  bookmarkCount: number;
-  shareCount: number;
-  viewCount: number;
-  createdAt: string;
-  updatedAt: string;
-  author: User;
-  category: Category;
-  media: Media[];
-  movie: MovieDetail | null;
-  book: BookDetail | null;
-  hike: HikeDetail | null;
-  poll: Poll | null;
-  likedByMe: boolean;
-  bookmarkedByMe: boolean;
-  ratingAvg: number | null;
-  reviewCount: number;
-  isEdited: boolean;
-}
-
-export type JokeSessionStatus = "OPEN" | "UPCOMING" | "CLOSED";
-
-export interface Joke {
-  id: string;
-  sessionId: string;
-  body: string;
-  createdAt: string;
-  likeCount: number;
-  commentCount: number;
-  likedByMe: boolean;
-  mine: boolean;
-  score: number;
-  author: User;
-}
-
-export interface JokeSession {
-  id: string;
-  title: string;
-  opensAt: string;
-  closesAt: string;
-  status: JokeSessionStatus;
-  jokeCount: number;
-}
-
-export interface JokeFeedResponse {
-  session: JokeSession | null;
-  upcoming: {
-    id: string;
-    title: string;
-    opensAt: string;
-    closesAt: string;
-  } | null;
-  jokes: Joke[];
-  winner: Joke | null;
-  canPost: boolean;
-}
-
-export interface JokeComment {
-  id: string;
-  jokeId: string;
-  body: string;
-  createdAt: string;
-  author: User;
-}
-
-export interface AdminJokeSession {
-  id: string;
-  title: string;
-  opensAt: string;
-  closesAt: string;
-  createdAt: string;
-  jokeCount: number;
-  status: JokeSessionStatus;
-  createdBy?: User | null;
-}
-
-export interface Comment {
-  id: string;
-  postId: string;
-  parentId: string | null;
-  body: string;
-  likeCount: number;
-  replyCount: number;
-  likedByMe: boolean;
-  isDeleted: boolean;
-  createdAt: string;
-  updatedAt: string;
-  depth: number;
-  author: User | null;
-  replies: Comment[];
-}
-
-export interface Review {
-  id: string;
-  postId: string;
-  userId: string;
-  rating: number;
-  body: string | null;
-  createdAt: string;
-  updatedAt: string;
-  user: User;
-}
-
-export interface RatingStats {
-  average: number | null;
-  count: number;
-  distribution: Record<string, number>;
-}
-
-export interface AppNotification {
-  id: string;
-  type:
-    | "POST_LIKE"
-    | "COMMENT"
-    | "REPLY"
-    | "COMMENT_LIKE"
-    | "FOLLOW"
-    | "MESSAGE"
-    | "ANNOUNCEMENT"
-    | "MOVIE_REVIEW"
-    | "BOOK_REVIEW"
-    | "EVENT_REMINDER";
-  body: string;
-  url?: string | null;
-  postId: string | null;
-  conversationId: string | null;
-  readAt: string | null;
-  createdAt: string;
-  actor: User | null;
-}
-
-export interface Message {
-  id: string;
-  conversationId: string;
-  senderId: string;
-  body: string | null;
-  replyToId: string | null;
-  editedAt: string | null;
-  deletedAt: string | null;
-  readAt: string | null;
-  createdAt: string;
-  sender: User;
-  media: Media[];
-  replyTo: {
-    id: string;
-    body: string | null;
-    deletedAt: string | null;
-    senderId: string;
-    sender: { id: string; username: string; displayName: string };
-  } | null;
-}
-
-export interface Conversation {
-  id: string;
-  lastMessageAt: string;
-  createdAt?: string;
-  otherUser: User;
-  lastMessage: Message | null;
-  unreadCount: number;
-}
-
-export interface UnreadCounts {
-  notifications: number;
-  messages: number;
-}
-
-export interface PageMeta {
-  page: number;
-  limit: number;
-  hasMore: boolean;
-  total?: number;
-}
-
-export interface ExploreData {
-  trending: Post[];
-  categories: Category[];
-  suggestedUsers: User[];
-  announcements: Post[];
-  movies: Post[];
-  books: Post[];
-  hikes: Post[];
-  stats: { members: number; posts: number; categories: number };
-}
-
-export interface PostsResponse {
-  posts: Post[];
-  nextCursor: string | null;
-  meta?: PageMeta;
-}
-
-export type RsvpStatus = "GOING" | "INTERESTED";
-
-export interface EventAttendee {
-  id: string;
-  username: string;
-  displayName: string;
-  avatarUrl: string | null;
-}
-
-export type EventKind = "EVENT" | "MEETUP";
-
-export type EventTopic =
-  | "FESTIVAL"
-  | "CINEMA"
-  | "THEATRE"
-  | "SOCIAL"
-  | "TRAVEL"
-  | "HIKING"
-  | "BUSINESS"
-  | "SEASONAL"
-  | "MUSIC"
-  | "SPORTS"
-  | "COMMUNITY"
-  | "OTHER";
-
-/** A feed that publishes events automatically (sports league, cinema, RSS). */
-export interface EventSourceSummary {
-  id: string;
-  key: string;
-  name: string;
-  adapter: "SPORTS_API" | "TELEGRAM" | "RSS" | "GEMINI";
-  topic: EventTopic;
-  config: Record<string, unknown>;
-  enabled: boolean;
-  lastSyncAt: string | null;
-  lastStatus: string | null;
-  lastError: string | null;
-  lastImported: number;
-  createdAt: string;
-  eventCount: number;
-}
-
-export interface EventSourcesResponse {
-  sources: EventSourceSummary[];
-}
-
-/** One Gemini key in the extraction pool, as shown in the admin workspace. */
-export interface AiKeyUsage {
-  index: number;
-  maskedKey: string;
-  requests: number;
-  successes: number;
-  rateLimited: number;
-  failures: number;
-  tokens: number;
-  lastUsedAt: string | null;
-  lastStatus: string | null;
-  lastError: string | null;
-  cooldownUntil: string | null;
-  available: boolean;
-}
-
-export interface AiUsageResponse {
-  configured: boolean;
-  model: string;
-  models: string[];
-  keys: AiKeyUsage[];
-  totals: {
-    requests: number;
-    successes: number;
-    rateLimited: number;
-    failures: number;
-    tokens: number;
-  };
-}
-
-export interface CommunityEvent {
-  id: string;
-  slug: string;
-  kind: EventKind;
-  topic: EventTopic;
-  competition?: string | null;
-  source: { id: string; key: string; name: string } | null;
-  sourceUrl: string | null;
-  importedAt: string | null;
-  title: string;
-  description: string;
-  coverUrl: string | null;
-  startDate: string;
-  endDate: string | null;
-  location: string;
-  lat: number | null;
-  lng: number | null;
-  maxAttendees: number | null;
-  categoryId: string | null;
-  placeId: string | null;
-  createdAt: string;
-  creator: EventAttendee;
-  category: {
-    id: string;
-    name: string;
-    slug: string;
-    color: string;
-    icon: string;
-  } | null;
-  place: {
-    id: string;
-    name: string;
-    slug: string;
-    kind: PlaceKind;
-    city: string;
-    area: string | null;
-    lat: number;
-    lng: number;
-  } | null;
-  counts: {
-    going: number;
-    interested: number;
-    total: number;
-  };
-  attendeesPreview: EventAttendee[];
-  myRsvp: RsvpStatus | null;
-}
-
-export interface EventsResponse {
-  events: CommunityEvent[];
-}
-
-/** One fixture on the sports schedule, already split into its two sides. */
-export interface SportFixture {
-  id: string;
-  slug: string;
-  title: string;
-  homeTeam: string;
-  awayTeam: string | null;
-  competition: string;
-  startDate: string;
-  endDate: string | null;
-  venue: string | null;
-  homeLogo: string | null;
-  awayLogo: string | null;
-  coverUrl: string | null;
-  sourceUrl: string | null;
-}
-
-export interface SportsLeague {
-  name: string;
-  fixtures: SportFixture[];
-}
-
-export interface SportsResponse {
-  leagues: SportsLeague[];
-  updatedAt: string | null;
-  window: { days: number; from: string; to: string };
-}
-
-/** A cinema screening pulled from a venue feed. */
-export interface CinemaScreening {
-  id: string;
-  slug: string;
-  title: string;
-  startDate: string;
-  endDate: string | null;
-  coverUrl: string | null;
-  sourceUrl: string | null;
-}
-
-export interface CinemaScheduleGroup {
-  venue: string;
-  cinema: { id: string; name: string; slug: string; area: string | null } | null;
-  screenings: CinemaScreening[];
-}
-
-export interface CinemasResponse {
-  cinemas: Place[];
-  schedules: CinemaScheduleGroup[];
-  updatedAt: string | null;
-  window: { days: number };
-}
-
-/** The departure plan a member saved for one gathering. */
-export interface LeaveByPlan {
-  id: string;
-  eventId: string;
-  origin: { lat: number; lng: number };
-  originLabel: string | null;
-  mode: "driving" | "walking";
-  leaveAt: string;
-  notifyAt: string;
-  travelSeconds: number;
-  distanceMeters: number;
-  notifiedAt: string | null;
-}
-
-export interface EventDetail extends Omit<CommunityEvent, "attendeesPreview"> {
-  attendees: {
-    going: EventAttendee[];
-    interested: EventAttendee[];
-  };
-  leaveBy: LeaveByPlan | null;
-}
-
-export interface EventDetailResponse {
-  event: EventDetail;
-}
-
-export interface QuizQuestionItem {
-  id: string;
+  type: QuestionType;
   prompt: string;
-  options: string[];
   category: string;
-  difficulty: "EASY" | "MEDIUM" | "HARD";
-  correctIndex?: number;
-  explanation?: string;
-  userAnswer?: number | null;
-  isCorrect?: boolean;
+  options: string[];
+  imageUrl: string | null;
+  matchLefts: string[];
+  matchOptions: string[];
 }
 
-export interface QuizTodayResponse {
-  day: string;
-  alreadyCompleted: boolean;
-  timeLimitSeconds: number;
-  totalParticipants: number;
-  score?: number;
-  durationMs?: number;
-  rank?: number | null;
-  userAnswers?: number[];
-  questions: QuizQuestionItem[];
-}
-
-export interface QuizLeaderboardItem {
-  rank: number;
-  id: string;
+export interface QuizPlaySummary {
+  playIndex: number;
+  paid: boolean;
   score: number;
-  durationMs: number;
-  durationSeconds: number;
+  correctCount: number;
+  totalQuestions: number;
+  durationMs: number | null;
   completedAt: string | null;
-  user: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string | null;
-  };
 }
 
-export interface QuizLeaderboardResponse {
+export interface QuizQuota {
+  maxPlays: number;
+  playsUsed: number;
+  playsRemaining: number;
+  freeAvailable: boolean;
+  retryPriceEtb: number;
+  exhausted: boolean;
+}
+
+export type RetryMethod = "TELEBIRR" | "CBE_BIRR" | "CASH";
+
+export interface QuizPaymentSummary {
+  playIndex: number;
+  amountEtb: number;
+  method: string;
+  reference: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface DailyQuizResponse {
   day: string;
-  leaderboard: QuizLeaderboardItem[];
-  total: number;
+  timeLimitSeconds: number;
+  questions: QuizQuestion[];
+  quota: QuizQuota;
+  // Only an unfinished play; finished plays are listed in `plays`.
+  attempt: { startedAt: string; playIndex: number; paid: boolean } | null;
+  plays: QuizPlaySummary[];
+  best: QuizPlaySummary | null;
+  payments: QuizPaymentSummary[];
+}
+
+export interface RetryStartResponse {
+  startedAt: string;
+  playIndex: number;
+  payment: { amountEtb: number; method: RetryMethod; status: string; createdAt: string };
+}
+
+export interface QuizRetryPayment {
+  id: string;
+  day: string;
+  playIndex: number;
+  amountEtb: number;
+  method: RetryMethod;
+  reference: string | null;
+  status: string;
+  createdAt: string;
+  user: { username: string; displayName: string; email: string; region: string | null };
+  attempt: { score: number; correctCount: number; completedAt: string | null } | null;
+}
+
+export interface QuizRetryReport {
+  day: string;
+  priceEtb: number;
+  count: number;
+  totalEtb: number;
+  confirmedCount: number;
+  payments: QuizRetryPayment[];
 }
 
 export interface QuizSubmitResponse {
-  success: boolean;
   score: number;
+  correctCount: number;
+  totalQuestions: number;
   durationMs: number;
-  timeLimitSeconds: number;
-  rank: number;
-  totalParticipants: number;
-  review: Array<{
-    id: string;
-    prompt: string;
-    options: string[];
-    category: string;
-    difficulty: string;
-    correctIndex: number;
-    userAnswer: number;
-    isCorrect: boolean;
-    explanation: string;
-  }>;
+  timedOut: boolean;
+  results: { questionId: string; correct: boolean }[];
 }
 
-// "Guess the Place" — daily photo challenge.
-export interface PlaceQuizQuestionItem {
+export type LeaderboardPeriod = "daily" | "weekly" | "monthly";
+
+export interface LeaderboardEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  displayName: string;
+  /** Points earned by every answered question in the period. */
+  points: number;
+  correctCount: number;
+  questions: number;
+  plays: number;
+  /** Time spent answering all of those questions. */
+  totalTimeMs: number;
+  lastCompletedAt: string;
+}
+
+export interface LeaderboardResponse {
+  period: LeaderboardPeriod;
+  key: string;
+  range: DateRange;
+  entries: LeaderboardEntry[];
+}
+
+export type DestinationCategory =
+  | "HISTORY"
+  | "HERITAGE"
+  | "NATURE"
+  | "WILDLIFE"
+  | "ADVENTURE"
+  | "CULTURE"
+  | "CITY"
+  | "FOOD";
+
+export interface DestinationSummary {
   id: string;
-  prompt: string;
-  imageUrl: string;
-  imageCredit: string;
-  imageLicense: string;
-  imagePageUrl: string | null;
-  options: string[];
-  category: string;
+  slug: string;
+  name: string;
   region: string;
-  kind: "PLACE" | "CULTURE";
-  correctIndex?: number;
-  answer?: string;
-  explanation?: string | null;
-  userAnswer?: number | null;
-  isCorrect?: boolean;
+  city: string | null;
+  category: DestinationCategory;
+  tagline: string;
+  imageUrl: string;
+  rating: number;
+  reviewCount: number;
+  featured: boolean;
+  budgetLevel: number;
+  durationDays: number;
 }
 
-export interface PlaceQuizTodayResponse {
-  day: string;
-  alreadyCompleted: boolean;
-  timeLimitSeconds: number;
-  totalParticipants: number;
-  score?: number;
-  durationMs?: number;
-  rank?: number | null;
-  userAnswers?: number[];
-  questions: PlaceQuizQuestionItem[];
-}
-
-export interface PlaceQuizLeaderboardItem {
-  rank: number;
-  id: string;
-  score: number;
-  durationMs: number;
-  durationSeconds: number;
-  completedAt: string | null;
-  user: {
+export interface Destination extends DestinationSummary {
+  summary: string;
+  description: string;
+  imageCredit: string | null;
+  tags: string[];
+  highlights: string[];
+  activities: string[];
+  bestTime: string;
+  gettingThere: string;
+  entryFee: string | null;
+  lat: number;
+  lng: number;
+  gallery: string[];
+  experiences: {
     id: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string | null;
-  };
+    title: string;
+    rating: number | null;
+    createdAt: string;
+    author: { username: string; displayName: string };
+  }[];
 }
 
-export interface PlaceQuizWinner {
-  day: string;
-  user: {
-    id: string;
-    username: string;
-    displayName: string;
-    avatarUrl: string | null;
-  };
+export interface Recommendation extends DestinationSummary {
+  summary: string;
+  description: string;
+  highlights: string[];
+  activities: string[];
+  bestTime: string;
+  gettingThere: string;
+  entryFee: string | null;
+  tags: string[];
+  lat: number;
+  lng: number;
   score: number;
-  durationSeconds: number;
+  reasons: string[];
+  why: string;
+  distanceKm: number | null;
 }
 
-export interface PlaceQuizLeaderboardResponse {
-  day: string;
-  leaderboard: PlaceQuizLeaderboardItem[];
-  total: number;
-  winners: PlaceQuizWinner[];
-  today: string;
-}
-
-export interface PlaceQuizSubmitResponse {
-  success: boolean;
-  score: number;
-  durationMs: number;
-  timeLimitSeconds: number;
-  rank: number;
-  totalParticipants: number;
-  review: PlaceQuizQuestionItem[];
-}
-
-// In-app navigation — routes come from the OpenStreetMap routing profile.
-export type TravelMode = "driving" | "walking";
-
-export interface RoutePoint {
+export interface GeocodeResult {
+  label: string;
   lat: number;
   lng: number;
 }
 
 export interface RouteStep {
-  /** OSRM maneuver type: depart, turn, continue, merge, roundabout, arrive… */
+  instruction: string;
+  road: string;
+  distanceMeters: number;
+  durationSeconds: number;
   type: string;
   modifier: string | null;
-  exit: number | null;
-  name: string;
-  distanceMeters: number;
-  durationSeconds: number;
-  location: RoutePoint;
 }
 
-export interface DirectionsRoute {
-  mode: TravelMode;
+export interface DrivingRoute {
   distanceMeters: number;
+  distanceKm: number;
   durationSeconds: number;
-  path: RoutePoint[];
+  geometry: [number, number][];
   steps: RouteStep[];
-  bounds: { south: number; west: number; north: number; east: number };
 }
 
-export interface DirectionsResponse {
-  route: DirectionsRoute;
-  /** Present when alternatives were requested; navigation honours a pick. */
-  routes?: DirectionsRoute[];
+export interface ExperienceAuthor {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  followedByMe?: boolean;
 }
 
-// "Let's Travel" — the trip planner compares transport options.
-export type PlanMode = "taxi" | "bus" | "walking";
-export type CongestionLevel = "LIGHT" | "MODERATE" | "HEAVY";
-
-export interface TrafficReport {
-  level: CongestionLevel;
-  label: string;
-  /** 0–100, higher means busier roads. */
-  score: number;
-  delaySeconds: number;
-  note: string;
-  source: "estimated";
+export interface ExperiencePost {
+  id: string;
+  title: string;
+  body: string;
+  destinationId: string | null;
+  destinationName: string;
+  region: string;
+  rating: number | null;
+  travelDate: string | null;
+  imageUrls: string[];
+  likeCount: number;
+  commentCount: number;
+  createdAt: string;
+  author: ExperienceAuthor;
+  likedByMe: boolean;
 }
 
-export interface TrafficContext {
-  day: string;
-  localTime: string;
-  period: "morning peak" | "midday" | "evening peak" | "off-peak" | "weekend";
-  label: string;
-  summary: string;
-  source: "estimated";
+export interface ExperienceComment {
+  id: string;
+  body: string;
+  createdAt: string;
+  author: ExperienceAuthor;
 }
 
-export interface PlannedRoute {
-  index: number;
-  label: string;
-  mode: PlanMode;
-  distanceMeters: number;
-  baseDurationSeconds: number;
-  durationSeconds: number;
-  path: RoutePoint[];
-  traffic: TrafficReport;
-  recommended: boolean;
-  reason: string | null;
+export interface ExperienceDetail extends ExperiencePost {
+  comments: ExperienceComment[];
 }
 
-export interface TravelPlan {
-  from: RoutePoint;
-  to: RoutePoint;
-  mode: PlanMode;
-  routes: PlannedRoute[];
-  recommendedIndex: number;
-  traffic: TrafficReport;
-  context: TrafficContext;
-  disclaimer: string;
+export interface LeaderboardReportEntry {
+  rank: number;
+  userId: string;
+  username: string;
+  displayName: string;
+  email: string;
+  region: string | null;
+  banned: boolean;
+  points: number;
+  correctCount: number;
+  questions: number;
+  plays: number;
+  totalTimeMs: number;
+  lastCompletedAt: string | null;
+  attemptsAllTime: number;
+  averageScore: number;
 }
 
-export interface TravelPlanResponse {
-  plan: TravelPlan;
+export interface DateRange {
+  /** Calendar day or first day, as YYYY-MM-DD. */
+  from: string;
+  /** Calendar day or last day, as YYYY-MM-DD. */
+  to: string;
 }
 
-/** A venue address resolved to a pin by the API's cached geocoder. */
-export interface GeocodeResponse {
-  location: {
-    lat: number;
-    lng: number;
-    displayName: string;
-    query: string;
+export interface LeaderboardReport {
+  period: LeaderboardPeriod;
+  key: string;
+  range: DateRange;
+  summary: { completed: number; averageScore: number; topScore: number };
+  entries: LeaderboardReportEntry[];
+}
+
+export type PrizeStatus = "PENDING" | "PAID" | "VOID";
+
+/** Which leaderboard period a prize is won for. */
+export type PrizePeriod = "DAILY" | "WEEKLY" | "MONTHLY";
+
+/** One configured winning place: its rank, prize and optional photo. */
+export interface PrizeTier {
+  id?: string;
+  period?: PrizePeriod;
+  rank: number;
+  name: string;
+  description: string | null;
+  amountEtb: number | null;
+  imageUrl: string | null;
+}
+
+export interface PrizeAward {
+  id: string;
+  period: PrizePeriod;
+  periodKey: string;
+  rank: number;
+  userId: string;
+  name: string;
+  description: string | null;
+  amountEtb: number | null;
+  imageUrl: string | null;
+  status: PrizeStatus;
+  note: string | null;
+  awardedAt: string;
+  user: { username: string; displayName: string; email: string };
+}
+
+export interface PrizeConfigResponse {
+  periods: PrizePeriod[];
+  currentKeys: Record<PrizePeriod, string>;
+  tiers: PrizeTier[];
+}
+
+/** A configured prize with the period it is awarded for, as members see it. */
+export interface PublicPrizeTier extends PrizeTier {
+  period: PrizePeriod;
+}
+
+export interface PrizeTypesResponse {
+  periods: PrizePeriod[];
+  currentKeys: Record<PrizePeriod, string>;
+  ranges: Record<PrizePeriod, DateRange>;
+  tiers: PublicPrizeTier[];
+}
+
+export interface PrizePeriodResponse {
+  period: PrizePeriod;
+  key: string;
+  range: DateRange;
+  winners: number;
+  tiers: PrizeTier[];
+  awards: PrizeAward[];
+}
+
+// ---------------------------------------------------------------------------
+// Community: people, follows and direct messages
+// ---------------------------------------------------------------------------
+
+export interface Member {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  region: string | null;
+  bio: string | null;
+  followers: number;
+  stories: number;
+  followedByMe: boolean;
+}
+
+export interface MemberProfile {
+  id: string;
+  username: string;
+  displayName: string;
+  avatarUrl: string | null;
+  region: string | null;
+  bio: string | null;
+  followers: number;
+  following: number;
+  followedByMe: boolean;
+  isMe: boolean;
+  stories: {
+    id: string;
+    title: string;
+    imageUrls: string[];
+    createdAt: string;
+    likeCount: number;
+    commentCount: number;
+  }[];
+}
+
+export interface ConversationSummary {
+  member: Omit<Member, "followers" | "stories" | "followedByMe">;
+  lastMessage: { body: string; createdAt: string; mine: boolean };
+  unread: number;
+}
+
+export interface ChatMessage {
+  id: string;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export interface UploadedPhoto {
+  url: string;
+  thumbnailUrl: string;
+  width: number;
+  height: number;
+}
+
+// ---------------------------------------------------------------------------
+// Admin
+// ---------------------------------------------------------------------------
+
+export interface AdminOverview {
+  totals: {
+    users: number;
+    banned: number;
+    posts: number;
+    comments: number;
+    likes: number;
+    follows: number;
+    messages: number;
+    destinations: number;
+    attempts: number;
+    newUsers30d: number;
   };
 }
 
-/** A public live-trip link created from navigation. */
-export type TripShareStatus = "ACTIVE" | "ARRIVED" | "ENDED" | "EXPIRED";
-
-export interface TripShare {
+export interface AdminUser {
   id: string;
-  token: string;
-  status: TripShareStatus;
-  mode: string;
-  origin: { name: string | null; lat: number; lng: number };
-  destination: { name: string; address: string | null; lat: number; lng: number };
-  traveler: { username: string; displayName: string; avatarUrl: string | null };
-  current: { lat: number; lng: number; accuracy: number | null; heading: number | null } | null;
-  routePath: RoutePoint[] | null;
-  routeDistanceMeters: number | null;
-  routeDurationSeconds: number | null;
-  remainingMeters: number | null;
-  remainingSeconds: number | null;
-  delayMinutes: number;
-  note: string | null;
-  lastFixAt: string | null;
-  lastFixAgoSeconds: number | null;
-  live: boolean;
-  estimatedArrivalAt: string | null;
-  arrivedAt: string | null;
-  endedAt: string | null;
-  expiresAt: string;
+  email: string;
+  username: string;
+  displayName: string;
+  /** Role name: USER, MODERATOR, ADMIN or a custom role. */
+  role: string;
+  region: string | null;
+  banned: boolean;
+  avatarUrl: string | null;
   createdAt: string;
-  isOwner: boolean;
+  stories: number;
+  attempts: number;
+  followers: number;
+  following: number;
+  messagesSent: number;
 }
 
-export interface TripSafetyPlace {
+export interface AdminPermission {
+  key: string;
+  label: string;
+  group: string;
+}
+
+export interface AdminRole {
+  id: string;
   name: string;
+  label: string;
+  description: string | null;
+  permissions: string[];
+  builtIn: boolean;
+  members: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface RolesResponse {
+  permissions: AdminPermission[];
+  roles: AdminRole[];
+}
+
+export interface AuditLogEntry {
+  id: string;
+  actorId: string | null;
+  actorName: string;
+  actorRole: string;
+  action: string;
+  targetType: string;
+  targetId: string | null;
+  detail: unknown;
+  createdAt: string;
+}
+
+export interface AuditResponse {
+  entries: AuditLogEntry[];
+  total: number;
+  actions: string[];
+}
+
+export interface QuizAnswerRow {
+  questionId: string;
+  prompt: string;
+  category: string;
+  type: string;
+  givenText: string;
+  correctText: string;
+  correct: boolean;
+}
+
+export interface QuizAnswerEntry {
+  id: string;
+  userId: string;
+  user: { username: string; displayName: string; email: string; role: string };
+  day: string;
+  playIndex: number;
+  score: number;
+  correctCount: number;
+  totalQuestions: number;
+  durationMs: number | null;
+  completedAt: string;
+  answers: QuizAnswerRow[];
+}
+
+export interface QuizAnswersResponse {
+  day: string;
+  filters: { userId: string; q: string };
+  summary: { plays: number; questions: number; correct: number; accuracy: number };
+  hardest: { questionId: string; prompt: string; category: string; wrong: number; total: number; accuracy: number }[];
+  entries: QuizAnswerEntry[];
+}
+
+export interface InteractionReport {
+  topPlaces: { id: string; name: string; region: string; stories: number }[];
+  topStories: {
+    id: string;
+    title: string;
+    likeCount: number;
+    commentCount: number;
+    createdAt: string;
+    author: { displayName: string; username: string };
+  }[];
+  dailyStories: { day: string; count: number }[];
+}
+
+export interface AdminDestination {
+  id: string;
   slug: string;
-  address: string | null;
-  area: string | null;
+  name: string;
+  region: string;
+  category: DestinationCategory;
+  imageUrl: string;
+  featured: boolean;
+  rating: number;
+  createdAt: string;
+  stories: number;
+}
+
+export interface DestinationDraft {
+  name: string;
+  region: string;
   city: string;
+  category: DestinationCategory;
+  tagline: string;
+  summary: string;
+  description: string;
+  highlights: string[];
+  activities: string[];
+  bestTime: string;
+  gettingThere: string;
+  entryFee: string;
+  durationDays: number;
+  budgetLevel: number;
   lat: number;
   lng: number;
-  kind: PlaceKind;
-  distanceKm: number;
+  imageUrl: string;
+  featured: boolean;
+  tags: string[];
 }
-
-export interface TripShareResponse {
-  trip: TripShare;
-  safety: {
-    hospital: TripSafetyPlace | null;
-    pharmacy: TripSafetyPlace | null;
-  };
-  serverTime: string;
-}
-
-
-

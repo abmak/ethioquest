@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Ethio Quest">
+  <defs>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0f766e" />
+      <stop offset="38%" stop-color="#16a34a" />
+      <stop offset="72%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#db2777" />
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#fff7d6" />
+      <stop offset="100%" stop-color="#fbbf24" />
+    </linearGradient>
+  </defs>
+  <circle cx="32" cy="32" r="29" fill="none" stroke="#f59e0b" stroke-opacity="0.55" stroke-width="1.8" stroke-dasharray="3 7" stroke-linecap="round" />
+  <g transform="rotate(-8 32 32)">
+    <rect x="10" y="10" width="44" height="44" rx="15" fill="url(#badge)" />
+    <g opacity="0.9">
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(45 32 32)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(90 32 32)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(135 32 32)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(180 32 32)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(225 32 32)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(270 32 32)" />
+      <rect x="31" y="15" width="1.8" height="6" rx="0.9" fill="url(#star)" transform="rotate(315 32 32)" />
+    </g>
+    <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="#3b1f12" />
+    <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="none" stroke="#fde68a" stroke-opacity="0.65" stroke-width="1.2" />
+    <path d="M32 22c-4 5-4 15 0 20" stroke="#fde68a" stroke-width="1.6" stroke-linecap="round" fill="none" opacity="0.85" />
+  </g>
+</svg>

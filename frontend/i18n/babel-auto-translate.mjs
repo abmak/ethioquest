@@ -192,7 +192,7 @@ export default function autoTranslate(babel, options = {}) {
         // catalog, so record it instead of wrapping it twice.
         if (
           callee.type === "Identifier" &&
-          (callee.name === "tt" || callee.name === "__tt") &&
+          (callee.name === "tt" || callee.name === "__tt" || callee.name === "ttp") &&
           nodePath.node.arguments[0]?.type === "StringLiteral"
         ) {
           const wrapped = rules.normalize(nodePath.node.arguments[0].value);

@@ -238,6 +238,117 @@
     @apply inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-brand-700 dark:text-brand-300;
   }
 
+  /* A colourful, layered background used behind hero banners. */
+  .hero-mesh {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background-image:
+      radial-gradient(38rem 26rem at 8% 0%, rgb(219 39 119 / 0.55), transparent 62%),
+      radial-gradient(34rem 24rem at 88% 4%, rgb(249 115 22 / 0.5), transparent 60%),
+      radial-gradient(36rem 28rem at 60% 108%, rgb(20 184 166 / 0.5), transparent 62%),
+      linear-gradient(120deg, #0f766e 0%, #15803d 42%, #b45309 100%);
+  }
+
+  .hero-mesh::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      radial-gradient(circle at 18% 78%, rgb(255 255 255 / 0.14) 0 2px, transparent 3px),
+      radial-gradient(circle at 74% 32%, rgb(255 255 255 / 0.12) 0 1.5px, transparent 2.5px);
+    background-size: 44px 44px, 32px 32px;
+    opacity: 0.7;
+  }
+
+  .glass {
+    @apply rounded-2xl border border-white/25;
+    background: rgb(255 255 255 / 0.14);
+    backdrop-filter: blur(10px);
+  }
+
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(110deg, #db2777, #f97316 45%, #facc15 80%);
+  }
+
+  .photo-tint {
+    background-image: linear-gradient(
+      to top,
+      rgb(6 12 9 / 0.82) 0%,
+      rgb(6 12 9 / 0.45) 42%,
+      rgb(6 12 9 / 0.08) 78%,
+      transparent 100%
+    );
+  }
+
+  .avatar-ring {
+    background-image: linear-gradient(135deg, #f97316, #db2777 45%, #7c3aed 80%, #0ea5e9);
+    padding: 2px;
+  }
+
+  .float-slow {
+    animation: float-slow 7s ease-in-out infinite;
+  }
+
+  .glow-dot {
+    box-shadow: 0 0 0 4px rgb(255 255 255 / 0.16);
+  }
+
+  /* ---------------------------------------------------------------------
+     Ethio Quest brand system: animated mark and moving-gradient wordmark.
+     --------------------------------------------------------------------- */
+  .brand-mark {
+    filter: drop-shadow(0 6px 18px rgb(15 118 110 / 0.28));
+    transition: transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 350ms ease;
+  }
+
+  .brand-lockup:hover .brand-mark,
+  .brand-mark:hover {
+    transform: scale(1.07) rotate(-3deg);
+    filter: drop-shadow(0 8px 26px rgb(219 39 119 / 0.35));
+  }
+
+  .brand-float {
+    animation: brand-float 5.5s ease-in-out infinite;
+  }
+
+  .brand-orbit {
+    transform-origin: 32px 32px;
+    animation: brand-spin 16s linear infinite;
+  }
+
+  .brand-orbit-reverse {
+    transform-origin: 32px 32px;
+    animation: brand-spin-reverse 26s linear infinite;
+  }
+
+  .brand-star {
+    transform-origin: 32px 32px;
+    animation: brand-pulse 4.2s ease-in-out infinite;
+  }
+
+  .brand-wordmark {
+    background-image: linear-gradient(100deg, #0f766e, #16a34a 25%, #f59e0b 55%, #db2777 80%, #7c3aed);
+    background-size: 220% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: brand-sheen 6s linear infinite;
+  }
+
+  .brand-underline {
+    background: linear-gradient(90deg, #0f766e, #16a34a 30%, #f59e0b 62%, #db2777 100%);
+    box-shadow: 0 1px 6px rgb(245 158 11 / 0.45);
+    transform-origin: left center;
+    animation: brand-underline 5.5s ease-in-out infinite;
+  }
+
+  .brand-lockup:hover .brand-underline {
+    animation-duration: 1.6s;
+  }
+
   .amharic-note {
     @apply font-ethiopic text-[0.95rem] leading-7 text-ink/90;
   }
@@ -332,6 +443,77 @@
   .brand-mark:hover .brand-mark-svg {
     transform: scale(1.06);
     filter: drop-shadow(0 8px 22px rgba(233, 185, 73, 0.4));
+  }
+}
+
+@keyframes brand-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+@keyframes brand-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes brand-spin-reverse {
+  from {
+    transform: rotate(360deg);
+  }
+  to {
+    transform: rotate(0deg);
+  }
+}
+
+@keyframes brand-pulse {
+  0%,
+  100% {
+    transform: scale(0.92);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+@keyframes brand-sheen {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 220% 50%;
+  }
+}
+
+@keyframes brand-underline {
+  0%,
+  100% {
+    transform: scaleX(0.72);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+}
+
+@keyframes float-slow {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-9px);
   }
 }
 
@@ -537,4 +719,27 @@
 
 .nav-tooltip::before {
   border-top-color: #14532d;
+}
+
+/* Travel map markers: a customer's start point stands out from the places. */
+.eq-marker {
+  border-radius: 9999px;
+  border: 3px solid #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
+}
+.eq-marker-place {
+  width: 18px;
+  height: 18px;
+  background: #16a34a;
+}
+.eq-marker-start {
+  width: 22px;
+  height: 22px;
+  background: #2563eb;
+}
+.eq-marker-end {
+  width: 24px;
+  height: 24px;
+  background: #f97316;
+  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.55);
 }

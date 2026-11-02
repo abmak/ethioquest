@@ -1,10 +1,10 @@
 import type { NextFunction, Request, RequestHandler, Response } from "express";
 import { prisma } from "../lib/prisma";
-import { isStaffSync } from "../lib/roles";
 import { ApiError } from "../lib/errors";
 import { TOKEN_COOKIE } from "../lib/cookies";
 import { verifyAuthToken } from "../lib/jwt";
 import { asyncHandler } from "../lib/async-handler";
+import { permissionsForRole } from "../lib/permissions";
 
 function extractToken(req: Request): string | null {
   const header = req.headers.authorization;
@@ -14,8 +14,8 @@ function extractToken(req: Request): string | null {
 }
 
 /**
- * Populates req.userId for valid sessions. Invalid/expired tokens fall through
- * as anonymous so public pages still work; protected routes reject explicitly.
+ * Populates req.userId for valid sessions. Invalid or expired tokens fall
+ * through as anonymous so public pages still load; protected routes reject.
  */
 export const authenticate = asyncHandler(async (req, _res, next) => {
   const token = extractToken(req);
@@ -38,7 +38,7 @@ export const authenticate = asyncHandler(async (req, _res, next) => {
       req.username = user.username;
     }
   } catch {
-    // Ignore invalid sessions here; requireAuth produces the 401.
+    // requireAuth produces the 401.
   }
   next();
 });
@@ -51,25 +51,40 @@ export function requireAuth(req: Request, _res: Response, next: NextFunction): v
   next();
 }
 
-export function requireRole(...roles: string[]): RequestHandler {
-  return (req, _res, next) => {
-    if (!req.userId) {
-      next(ApiError.unauthorized());
-      return;
-    }
-    if (!req.userRole || !roles.includes(req.userRole)) {
-      next(ApiError.forbidden("This area is restricted to community moderators"));
-      return;
-    }
-    next();
-  };
+export function requireAdmin(req: Request, _res: Response, next: NextFunction): void {
+  if (!req.userId) {
+    next(ApiError.unauthorized());
+    return;
+  }
+  if (req.userRole !== "ADMIN") {
+    next(ApiError.forbidden("This area is restricted to administrators"));
+    return;
+  }
+  next();
 }
 
+export const requireRole = (...roles: string[]): RequestHandler => (req, _res, next) => {
+  if (!req.userId) {
+    next(ApiError.unauthorized());
+    return;
+  }
+  if (!req.userRole || !roles.includes(req.userRole)) {
+    next(ApiError.forbidden());
+    return;
+  }
+  next();
+};
+
 /**
- * True when the caller's role holds any administrative capability. Custom
- * roles created from the dashboard count, so membership is never checked by
- * hard-coding the two built-in slugs.
+ * Guards an admin route with a named capability from the role's permission
+ * list, so custom roles and edited built-in roles take effect immediately.
  */
-export function isModerator(req: Request): boolean {
-  return isStaffSync(req.userRole);
-}
+export const requirePermission = (permission: string): RequestHandler =>
+  asyncHandler(async (req, _res, next) => {
+    if (!req.userId) throw ApiError.unauthorized();
+    const permissions = await permissionsForRole(req.userRole ?? "");
+    if (!permissions.includes(permission)) {
+      throw ApiError.forbidden("Your role does not include this permission");
+    }
+    next();
+  });

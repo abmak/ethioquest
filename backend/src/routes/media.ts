@@ -3,14 +3,12 @@ import fs from "node:fs";
 import path from "node:path";
 import { Router } from "express";
 import multer from "multer";
-import { z } from "zod";
 import { env } from "../config/env";
-import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../lib/async-handler";
 import { ApiError } from "../lib/errors";
 import { requireAuth } from "../middleware/auth";
 import { uploadLimiter } from "../lib/rate-limit";
-import { mediaUrl, processImage, removeUploads, uploadDir } from "../lib/storage";
+import { mediaUrl, processImage, uploadDir } from "../lib/storage";
 
 export const mediaRouter = Router();
 
@@ -22,92 +20,52 @@ const IMAGE_TYPES: Record<string, string> = {
   "image/avif": ".avif",
 };
 
-const AUDIO_TYPES: Record<string, string> = {
-  "audio/webm": ".webm",
-  "audio/ogg": ".ogg",
-  "audio/mpeg": ".mp3",
-  "audio/mp4": ".m4a",
-  "audio/x-m4a": ".m4a",
-  "audio/wav": ".wav",
-  "audio/x-wav": ".wav",
-  "audio/aac": ".aac",
-};
-
-// Ensure the upload directory exists before the first request arrives.
+// The directory must exist before multer writes the first file.
 fs.mkdirSync(uploadDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => cb(null, uploadDir),
-  filename: (_req, file, cb) => {
-    const extension =
-      IMAGE_TYPES[file.mimetype] ?? AUDIO_TYPES[file.mimetype] ?? path.extname(file.originalname);
-    cb(null, `${randomUUID()}${extension.slice(0, 10)}`);
-  },
-});
-
 const upload = multer({
-  storage,
-  limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024, files: 1 },
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, uploadDir),
+    filename: (_req, file, cb) => {
+      const extension = IMAGE_TYPES[file.mimetype] ?? path.extname(file.originalname);
+      cb(null, `${randomUUID()}${extension.slice(0, 10)}`);
+    },
+  }),
+  limits: { fileSize: env.MAX_UPLOAD_MB * 1024 * 1024, files: 6 },
   fileFilter: (_req, file, cb) => {
-    if (IMAGE_TYPES[file.mimetype] || AUDIO_TYPES[file.mimetype]) {
+    if (IMAGE_TYPES[file.mimetype]) {
       cb(null, true);
       return;
     }
-    cb(ApiError.badRequest("Only JPEG, PNG, WebP, GIF, AVIF images or common audio files are allowed."));
+    cb(ApiError.badRequest("Choose a JPEG, PNG, WebP, GIF or AVIF photo."));
   },
 });
 
-const durationSchema = z.coerce.number().int().min(0).max(15 * 60 * 1000).optional();
-
+/**
+ * Photo upload for travel stories. Accepts up to six images in one request so
+ * a story can be published with its gallery attached.
+ */
 mediaRouter.post(
   "/",
   requireAuth,
   uploadLimiter,
-  upload.single("file"),
+  upload.array("files", 6),
   asyncHandler(async (req, res) => {
-    if (!req.file) throw ApiError.badRequest("Choose a file to upload.");
+    const files = (req.files ?? []) as Express.Multer.File[];
+    if (files.length === 0) throw ApiError.badRequest("Choose at least one photo to upload.");
 
-    const isImage = Boolean(IMAGE_TYPES[req.file.mimetype]);
-    const isAudio = Boolean(AUDIO_TYPES[req.file.mimetype]);
-    if (!isImage && !isAudio) {
-      await removeUploads([mediaUrl(req.file.filename)]);
-      throw ApiError.badRequest("Unsupported file type.");
-    }
+    const photos = await Promise.all(
+      files.map(async (file) => {
+        const image = await processImage(file);
+        return {
+          url: mediaUrl(file.filename),
+          thumbnailUrl: image.thumbnailUrl ?? mediaUrl(file.filename),
+          width: image.width ?? 0,
+          height: image.height ?? 0,
+        };
+      }),
+    );
 
-    const image = isImage ? await processImage(req.file) : { width: null, height: null, thumbnailUrl: null };
-    const parsedDuration = durationSchema.safeParse(req.body?.durationMs);
-
-    const media = await prisma.media.create({
-      data: {
-        ownerId: req.userId!,
-        kind: isImage ? "IMAGE" : "AUDIO",
-        url: mediaUrl(req.file.filename),
-        thumbnailUrl: image.thumbnailUrl,
-        mimeType: req.file.mimetype,
-        sizeBytes: req.file.size,
-        width: image.width,
-        height: image.height,
-        durationMs: isAudio && parsedDuration.success ? parsedDuration.data ?? null : null,
-      },
-    });
-
-    res.status(201).json({ media });
-  }),
-);
-
-mediaRouter.delete(
-  "/:id",
-  requireAuth,
-  asyncHandler(async (req, res) => {
-    const media = await prisma.media.findUnique({ where: { id: String(req.params.id) } });
-    if (!media) throw ApiError.notFound("That upload no longer exists.");
-    if (media.ownerId !== req.userId) throw ApiError.forbidden();
-    if (media.postId || media.messageId) {
-      throw ApiError.badRequest("Remove this attachment from the post or message first.");
-    }
-
-    await prisma.media.delete({ where: { id: media.id } });
-    await removeUploads([media.url, media.thumbnailUrl]);
-    res.status(204).end();
+    res.status(201).json({ photos });
   }),
 );

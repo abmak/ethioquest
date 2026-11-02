@@ -3,58 +3,26 @@ import { env } from "./config/env";
 import { logger } from "./lib/logger";
 import { prisma } from "./lib/prisma";
 import { createApp } from "./app";
-import { initSocket } from "./socket";
-import { ensureUploadDir } from "./lib/storage";
-import { ensureSeedEvents, ensureSeedEventSources } from "./lib/seed-events";
-import { ensureSeedJokes } from "./lib/seed-jokes";
-import { ensureSeedPlaces } from "./lib/seed-places";
-import { startEventIngest } from "./lib/events/ingest";
-import { ensureBuiltinRoles } from "./lib/roles";
-import { ensureSeedQuizQuestions } from "./lib/seed-quiz";
-import { ensureSeedPlaceQuiz } from "./lib/seed-place-quiz";
-import { startLeaveByScheduler } from "./lib/leave-by";
+import { ensureQuizPool } from "./lib/quiz/pool";
+import { ensurePrizeConfig } from "./lib/prizes";
 
 async function main(): Promise<void> {
-  await ensureUploadDir();
-  await ensureBuiltinRoles().catch((err) => {
-    logger.warn({ err }, "Could not ensure built-in roles");
+  await ensureQuizPool().catch((err) => {
+    logger.warn({ err }, "Could not seed the quiz question pool");
   });
-  await ensureSeedEvents().catch((err) => {
-    logger.warn({ err }, "Could not run seed events");
-  });
-  await ensureSeedEventSources().catch((err) => {
-    logger.warn({ err }, "Could not seed event sources");
-  });
-  await ensureSeedJokes().catch((err) => {
-    logger.warn({ err }, "Could not seed Joke Time");
-  });
-  await ensureSeedPlaces().catch((err) => {
-    logger.warn({ err }, "Could not seed the nearby service places");
-  });
-  await ensureSeedQuizQuestions().catch((err) => {
-    logger.warn({ err }, "Could not seed quiz questions");
-  });
-  await ensureSeedPlaceQuiz().catch((err) => {
-    logger.warn({ err }, "Could not seed the Guess the Place questions");
+  await ensurePrizeConfig().catch((err) => {
+    logger.warn({ err }, "Could not seed the default prize configuration");
   });
 
   const app = createApp();
   const server = http.createServer(app);
-  initSocket(server);
 
   server.listen(env.PORT, () => {
-    logger.info(
-      { port: env.PORT, env: env.NODE_ENV, client: env.CLIENT_ORIGIN },
-      "Addis Gebeta API + realtime gateway listening",
-    );
-    // Fire-and-forget: the first import pulls fixtures and listings in without
-    // delaying the API coming up, then the timer keeps them fresh.
-    startEventIngest(env.EVENTS_SYNC_MINUTES);
-    startLeaveByScheduler();
+    logger.info({ port: env.PORT, env: env.NODE_ENV, client: env.CLIENT_ORIGIN }, "EthioQuest API listening");
   });
 
   const shutdown = async (signal: string) => {
-    logger.info({ signal }, "Shutting down Addis Gebeta API");
+    logger.info({ signal }, "Shutting down EthioQuest API");
     server.close();
     await prisma.$disconnect().catch(() => undefined);
     process.exit(0);
@@ -68,6 +36,6 @@ async function main(): Promise<void> {
 }
 
 main().catch((error) => {
-  logger.error({ err: error }, "Failed to start Addis Gebeta API");
+  logger.error({ err: error }, "Failed to start EthioQuest API");
   process.exit(1);
 });

@@ -1,1946 +1,730 @@
-import { Router, type Request } from "express";
+import { Router } from "express";
 import { z } from "zod";
-import { EventKind, EventTopic, type Prisma } from "@prisma/client";
 import { prisma } from "../lib/prisma";
 import { asyncHandler } from "../lib/async-handler";
 import { ApiError } from "../lib/errors";
-import { requireAuth } from "../middleware/auth";
+import { requireAuth, requirePermission } from "../middleware/auth";
 import { validate } from "../middleware/validate";
-import { EVENT_TOPIC_VALUES } from "../lib/event-topics";
-import { parseLimit, parsePage } from "../lib/pagination";
-import { publicUserSelect, selfUserSelect } from "../lib/serialize";
-import { emitToAll } from "../lib/realtime";
-import { pushAnnouncement, pushNewEvent } from "../lib/push";
+import { roleExists } from "../lib/permissions";
+import { recordAudit } from "../lib/audit";
 import {
-  PERMISSIONS,
-  PERMISSION_SET,
-  canManageRole,
-  isPermission,
-  permissionsFor,
-  requirePermission,
-} from "../lib/rbac";
-import { getRole, listRoles, refreshRoles, roleRankSync } from "../lib/roles";
+  PERIOD_KEY_PATTERNS,
+  PRIZE_PERIODS,
+  periodRange,
+  prizePeriodOf,
+  rankPeriodOf,
+  type PrizePeriod,
+} from "../lib/prizes";
+import { adminExtrasRouter } from "./admin-extras";
+import { memberTotalsForPeriod, periodKeys } from "./quiz";
 
 export const adminRouter = Router();
 
-// Every admin surface needs a signed-in member; individual routes then narrow
-// further with `requirePermission`, which resolves the caller's live role
-// permissions from the database.
+// Every admin route names the capability it needs, so a custom role or an
+// edited built-in role changes access immediately without a restart.
 adminRouter.use(requireAuth);
+adminRouter.use(adminExtrasRouter);
 
-const DAY_MS = 24 * 60 * 60 * 1000;
+const prizePeriodSchema = z.enum(["DAILY", "WEEKLY", "MONTHLY"]);
 
-const pageQuery = z.object({
-  page: z.coerce.number().int().positive().optional(),
-  limit: z.coerce.number().int().positive().max(100).optional(),
-  q: z.string().trim().max(120).optional(),
-});
-
-const idParams = z.object({ id: z.string().min(1) });
-
-const rangeQuery = z.object({
-  range: z.coerce.number().int().optional(),
-});
-
-const userListQuery = pageQuery.extend({
-  role: z.string().trim().max(40).optional(),
-  status: z.enum(["all", "active", "suspended"]).default("all"),
-  sort: z.enum(["newest", "oldest", "posts", "comments", "recent"]).default("newest"),
-});
-
-const updateUserSchema = z.object({
-  role: z.string().trim().max(40).optional(),
-  banned: z.boolean().optional(),
-  reason: z.string().trim().max(500).optional(),
-});
-
-const reportParams = z.object({ id: z.string().min(1) });
-
-const updateReportSchema = z.object({
-  status: z.enum(["OPEN", "RESOLVED", "DISMISSED"]),
-  note: z.string().trim().max(500).optional(),
-});
-
-const contentQuery = pageQuery.extend({
-  type: z.enum(["POST", "COMMENT"]).default("POST"),
-  status: z.enum(["all", "visible", "removed"]).default("visible"),
-  category: z.string().trim().max(60).optional(),
-});
-
-const contentParams = z.object({ type: z.enum(["POST", "COMMENT"]), id: z.string().min(1) });
-
-const categorySchema = z.object({
-  slug: z
-    .string()
-    .trim()
-    .toLowerCase()
-    .regex(/^[a-z0-9-]{2,40}$/, "Use lowercase letters, numbers and dashes"),
-  name: z.string().trim().min(2).max(60),
-  description: z.string().trim().min(10).max(500),
-  icon: z.string().trim().min(1).max(40).default("MessageCircle"),
-  color: z
-    .string()
-    .trim()
-    .regex(/^#[0-9a-fA-F]{6}$/, "Use a hex colour like #0f766e")
-    .default("#0f766e"),
-  kind: z.enum(["DISCUSSION", "MOVIE", "BOOK", "HIKE"]).default("DISCUSSION"),
-  sortOrder: z.coerce.number().int().min(0).max(999).default(0),
-});
-
-const categoryUpdateSchema = categorySchema.partial();
-
-const announcementSchema = z.object({
-  title: z.string().trim().min(3).max(120),
-  body: z.string().trim().min(5).max(4000),
-});
-
-const auditQuery = pageQuery.extend({
-  action: z.string().trim().max(60).optional(),
-  actorId: z.string().trim().max(60).optional(),
-});
-
-interface AuditInput {
-  action: string;
-  targetType: string;
-  targetId?: string | null;
-  summary: string;
-  metadata?: Prisma.InputJsonValue;
+function prizePeriodParam(value: string): PrizePeriod {
+  const period = prizePeriodSchema.parse(value);
+  return period;
 }
 
-const roleSlugSchema = z
-  .string()
-  .trim()
-  .toUpperCase()
-  .regex(/^[A-Z][A-Z0-9_]{1,39}$/, "Use 2–40 uppercase letters, numbers or underscores");
+function prizeKeyParam(period: PrizePeriod, value: string): string {
+  return z.string().regex(PERIOD_KEY_PATTERNS[period], "Invalid period key").parse(value);
+}
 
-const roleCreateSchema = z.object({
-  slug: roleSlugSchema,
-  name: z.string().trim().min(2).max(40),
-  description: z.string().trim().max(300).default(""),
-  permissions: z.array(z.string().trim()).max(PERMISSIONS.length).default([]),
-  rank: z.coerce.number().int().min(11).max(99).optional(),
+const prizeTierSchema = z.object({
+  rank: z.number().int().min(1).max(20),
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(500).optional().nullable(),
+  amountEtb: z.number().int().min(0).max(10_000_000).optional().nullable(),
+  imageUrl: z.string().trim().max(600).optional().nullable(),
 });
 
-const roleUpdateSchema = z.object({
-  name: z.string().trim().min(2).max(40).optional(),
-  description: z.string().trim().max(300).optional(),
-  permissions: z.array(z.string().trim()).max(PERMISSIONS.length).optional(),
-  rank: z.coerce.number().int().min(11).max(99).optional(),
-});
+const prizeTiersSchema = z.object({ tiers: z.array(prizeTierSchema).min(1).max(20) });
 
-function assertKnownPermissions(permissions: string[]): void {
-  const unknown = permissions.filter((permission) => !PERMISSION_SET.has(permission));
-  if (unknown.length > 0) {
-    throw ApiError.badRequest(`Unknown capability: ${unknown.join(", ")}`);
-  }
+const periodSchema = z.enum(["daily", "weekly", "monthly"]);
+
+function periodWhere(period: z.infer<typeof periodSchema>, key: string) {
+  if (period === "daily") return { day: key };
+  if (period === "weekly") return { weekKey: key };
+  return { monthKey: key };
 }
 
-async function recordAction(req: Request, input: AuditInput): Promise<void> {
-  if (!req.userId || !req.userRole) return;
-  await prisma.adminAction.create({
-    data: {
-      actorId: req.userId,
-      actorRole: req.userRole,
-      action: input.action,
-      targetType: input.targetType,
-      targetId: input.targetId ?? null,
-      summary: input.summary,
-      ...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
-    },
-  });
-}
-
-function normalizeRange(raw: unknown): 7 | 30 | 90 {
-  const value = Number(raw);
-  return value === 90 ? 90 : value === 7 ? 7 : 30;
-}
-
-function startOfWindow(days: number): Date {
-  const start = new Date(Date.now() - (days - 1) * DAY_MS);
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
-
-function dayKey(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
-
-type DailyRow = { day: Date; count: bigint };
-
-function emptySeries(since: Date, days: number) {
-  return Array.from({ length: days }).map((_, index) => {
-    const date = new Date(since.getTime() + index * DAY_MS);
-    return { day: dayKey(date), members: 0, posts: 0, comments: 0, reports: 0 };
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Session & access
-// ---------------------------------------------------------------------------
-
+/**
+ * Detailed leaderboard report for one period. Each member appears once with
+ * the points and time their answered questions earned in that period — the
+ * same totals that rank the public leaderboard — plus staff-only context.
+ */
 adminRouter.get(
-  "/me",
+  "/leaderboard-report",
+  requirePermission("quiz.leaderboard"),
   asyncHandler(async (req, res) => {
-    const user = await prisma.user.findUnique({
-      where: { id: req.userId! },
-      select: { id: true, username: true, displayName: true, avatarUrl: true, role: true },
+    const period = periodSchema.catch("monthly").parse(req.query.period);
+    const keys = periodKeys();
+    const key =
+      typeof req.query.key === "string" && req.query.key
+        ? req.query.key
+        : period === "daily"
+          ? keys.day
+          : period === "weekly"
+            ? keys.weekKey
+            : keys.monthKey;
+
+    const grouped = await prisma.quizAttempt.groupBy({
+      by: ["userId"],
+      where: { ...periodWhere(period, key), completedAt: { not: null } },
+      _sum: { score: true, correctCount: true, totalQuestions: true, durationMs: true },
+      _count: { _all: true },
+      _max: { completedAt: true },
     });
-    if (!user) throw ApiError.notFound("Your account could not be found.");
-    res.json({ user, permissions: await permissionsFor(user.role) });
-  }),
-);
 
-// ---------------------------------------------------------------------------
-// Roles & permissions (editable at runtime)
-// ---------------------------------------------------------------------------
+    // Points first, then the faster total answering time, then whoever got there first.
+    const ranked = grouped
+      .map((row) => ({
+        userId: row.userId,
+        points: row._sum.score ?? 0,
+        correctCount: row._sum.correctCount ?? 0,
+        questions: row._sum.totalQuestions ?? 0,
+        plays: row._count._all,
+        totalTimeMs: row._sum.durationMs ?? 0,
+        lastCompletedAt: row._max.completedAt,
+      }))
+      .sort(
+        (a, b) =>
+          b.points - a.points ||
+          a.totalTimeMs - b.totalTimeMs ||
+          (a.lastCompletedAt?.getTime() ?? 0) - (b.lastCompletedAt?.getTime() ?? 0),
+      )
+      .slice(0, 100);
 
-adminRouter.get(
-  "/roles",
-  requirePermission("admin.roles.view"),
-  asyncHandler(async (_req, res) => {
-    const [roles, counts] = await Promise.all([
-      listRoles(),
-      prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
+    const userIds = ranked.map((row) => row.userId);
+    const [users, totals] = await Promise.all([
+      prisma.user.findMany({
+        where: { id: { in: userIds } },
+        select: { id: true, username: true, displayName: true, email: true, region: true, banned: true },
+      }),
+      prisma.quizAttempt.groupBy({
+        by: ["userId"],
+        where: { userId: { in: userIds }, completedAt: { not: null } },
+        _count: { _all: true },
+        _avg: { score: true },
+      }),
     ]);
-    const byRole = new Map(counts.map((row) => [row.role, row._count._all]));
+    const usersById = new Map(users.map((u) => [u.id, u]));
+    const totalsById = new Map(totals.map((t) => [t.userId, t]));
+
+    const entries = ranked.flatMap((row, i) => {
+      const user = usersById.get(row.userId);
+      if (!user) return [];
+      const t = totalsById.get(row.userId);
+      return [
+        {
+          rank: i + 1,
+          ...row,
+          username: user.username,
+          displayName: user.displayName,
+          email: user.email,
+          region: user.region,
+          banned: user.banned,
+          attemptsAllTime: t?._count._all ?? 0,
+          averageScore: Math.round(t?._avg.score ?? 0),
+        },
+      ];
+    });
+
+    const completed = entries.length;
+    const averageScore = completed ? Math.round(entries.reduce((s, e) => s + e.points, 0) / completed) : 0;
     res.json({
-      permissions: PERMISSIONS,
-      roles: roles.map((role) => ({
-        id: role.id,
-        slug: role.slug,
-        name: role.name,
-        description: role.description,
-        permissions: role.permissions.filter(isPermission),
-        rank: role.rank,
-        system: role.system,
-        members: byRole.get(role.slug) ?? 0,
-      })),
+      period,
+      key,
+      range: periodRange(prizePeriodOf(period), key),
+      summary: { completed, averageScore, topScore: entries[0]?.points ?? 0 },
+      entries,
     });
   }),
 );
 
-adminRouter.post(
-  "/roles",
-  requirePermission("admin.roles.manage"),
-  validate(roleCreateSchema),
+/** The prize configuration for every period, plus the key of the current one. */
+adminRouter.get(
+  "/prizes/config",
+  requirePermission("quiz.prizes"),
+  asyncHandler(async (_req, res) => {
+    const keys = periodKeys();
+    const tiers = await prisma.prizeTier.findMany({ orderBy: [{ period: "asc" }, { rank: "asc" }] });
+    res.json({
+      periods: PRIZE_PERIODS,
+      currentKeys: { DAILY: keys.day, WEEKLY: keys.weekKey, MONTHLY: keys.monthKey },
+      tiers,
+    });
+  }),
+);
+
+/**
+ * Replaces one period's winner list. Each row is one winning rank, so the
+ * number of rows is the number of winners.
+ */
+adminRouter.put(
+  "/prizes/config/:period",
+  requirePermission("quiz.prizes"),
+  validate(prizeTiersSchema),
   asyncHandler(async (req, res) => {
-    const input = req.body as z.infer<typeof roleCreateSchema>;
-    assertKnownPermissions(input.permissions);
+    const period = prizePeriodParam(req.params.period);
+    const { tiers } = req.body as z.infer<typeof prizeTiersSchema>;
 
-    const actorRank = roleRankSync(req.userRole);
-    if (input.rank !== undefined && input.rank >= actorRank) {
-      throw ApiError.forbidden("A new role cannot outrank your own role.");
-    }
-    const assignedRank = input.rank ?? Math.min(actorRank - 1, 20);
+    const ranks = new Set(tiers.map((tier) => tier.rank));
+    if (ranks.size !== tiers.length) throw ApiError.badRequest("Each winning rank can appear only once");
 
-    const actorPermissions = await permissionsFor(req.userRole);
-    const beyond = input.permissions.filter((permission) => !actorPermissions.includes(permission as never));
-    if (beyond.length > 0) {
-      throw ApiError.forbidden(`You cannot grant a capability you do not hold: ${beyond.join(", ")}`);
-    }
+    await prisma.$transaction([
+      prisma.prizeTier.deleteMany({ where: { period } }),
+      prisma.prizeTier.createMany({
+        data: tiers.map((tier) => ({
+          period,
+          rank: tier.rank,
+          name: tier.name,
+          description: tier.description?.trim() || null,
+          amountEtb: tier.amountEtb ?? null,
+          imageUrl: tier.imageUrl?.trim() || null,
+        })),
+      }),
+    ]);
 
-    const existing = await prisma.roleDefinition.findFirst({
-      where: { OR: [{ slug: input.slug }, { name: input.name }] },
-      select: { id: true },
+    const saved = await prisma.prizeTier.findMany({ where: { period }, orderBy: { rank: "asc" } });
+    await recordAudit(req, {
+      action: "prize.config.update",
+      targetType: "period",
+      targetId: period,
+      detail: { winners: saved.length, ranks: saved.map((tier) => tier.rank) },
     });
-    if (existing) throw ApiError.conflict("A role with that slug or name already exists.");
-
-    const role = await prisma.roleDefinition.create({
-      data: {
-        slug: input.slug,
-        name: input.name,
-        description: input.description,
-        permissions: input.permissions,
-        rank: assignedRank,
-        system: false,
-      },
-    });
-    await refreshRoles();
-    await recordAction(req, {
-      action: "role.created",
-      targetType: "ROLE",
-      targetId: role.slug,
-      summary: `Created the role ${role.name} (${role.slug}) with ${role.permissions.length} capabilities`,
-      metadata: { slug: role.slug, permissions: role.permissions, rank: role.rank },
-    });
-    res.status(201).json({ role });
+    res.json({ tiers: saved });
   }),
 );
+
+/** One period's configured winners and the awards already granted for it. */
+adminRouter.get(
+  "/prizes/:period/:key",
+  requirePermission("quiz.prizes"),
+  asyncHandler(async (req, res) => {
+    const period = prizePeriodParam(req.params.period);
+    const key = prizeKeyParam(period, req.params.key);
+    const [tiers, awards] = await Promise.all([
+      prisma.prizeTier.findMany({ where: { period }, orderBy: { rank: "asc" } }),
+      prisma.prizeAward.findMany({
+        where: { period, periodKey: key },
+        orderBy: { rank: "asc" },
+        include: { user: { select: { username: true, displayName: true, email: true } } },
+      }),
+    ]);
+    res.json({ period, key, range: periodRange(period, key), winners: tiers.length, tiers, awards });
+  }),
+);
+
+/**
+ * Snapshots the period's winners using the same ranking rule as the public
+ * leaderboard (points, then total answering time). Running it again keeps
+ * existing rows — including paid or void ones — untouched.
+ */
+adminRouter.post(
+  "/prizes/:period/:key/finalise",
+  requirePermission("quiz.prizes"),
+  asyncHandler(async (req, res) => {
+    const period = prizePeriodParam(req.params.period);
+    const key = prizeKeyParam(period, req.params.key);
+    const tiers = await prisma.prizeTier.findMany({ where: { period }, orderBy: { rank: "asc" } });
+    if (tiers.length === 0) throw ApiError.badRequest("Configure the winners for this period first");
+
+    const ranked = await memberTotalsForPeriod(rankPeriodOf(period), key, tiers.length);
+    if (ranked.length === 0) throw ApiError.badRequest("No completed attempts exist for that period");
+
+    await prisma.$transaction(
+      ranked.map((row, i) => {
+        const tier = tiers[i];
+        return prisma.prizeAward.upsert({
+          where: { period_periodKey_rank: { period, periodKey: key, rank: tier.rank } },
+          create: {
+            period,
+            periodKey: key,
+            rank: tier.rank,
+            userId: row.userId,
+            name: tier.name,
+            description: tier.description,
+            amountEtb: tier.amountEtb,
+            imageUrl: tier.imageUrl,
+          },
+          update: {},
+        });
+      }),
+    );
+    const awards = await prisma.prizeAward.findMany({
+      where: { period, periodKey: key },
+      orderBy: { rank: "asc" },
+      include: { user: { select: { username: true, displayName: true, email: true } } },
+    });
+    await recordAudit(req, {
+      action: "prize.finalise",
+      targetType: "period",
+      targetId: `${period}:${key}`,
+      detail: { awards: awards.length, winners: tiers.length },
+    });
+    res.json({ period, key, range: periodRange(period, key), winners: tiers.length, tiers, awards });
+  }),
+);
+
+const prizeUpdateSchema = z.object({
+  status: z.enum(["PENDING", "PAID", "VOID"]),
+  note: z.string().trim().max(500).optional().nullable(),
+});
 
 adminRouter.patch(
-  "/roles/:id",
-  requirePermission("admin.roles.manage"),
-  validate(idParams, "params"),
-  validate(roleUpdateSchema),
+  "/prizes/award/:id",
+  requirePermission("quiz.prizes"),
+  validate(prizeUpdateSchema),
   asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const input = req.body as z.infer<typeof roleUpdateSchema>;
-
-    const role = await prisma.roleDefinition.findFirst({
-      where: { OR: [{ id }, { slug: id }] },
+    const award = await prisma.prizeAward.findUnique({ where: { id: req.params.id } });
+    if (!award) throw ApiError.notFound("Prize award not found");
+    const { status, note } = req.body as z.infer<typeof prizeUpdateSchema>;
+    const updated = await prisma.prizeAward.update({
+      where: { id: award.id },
+      data: { status, note: note ?? null },
     });
-    if (!role) throw ApiError.notFound("That role could not be found.");
-    if (role.slug === req.userRole) {
-      throw ApiError.badRequest(
-        "You cannot edit the permissions of the role you are signed in with. Ask another administrator.",
-      );
-    }
-
-    if (input.permissions) assertKnownPermissions(input.permissions);
-
-    const actorRank = roleRankSync(req.userRole);
-    if (input.rank !== undefined && input.rank >= actorRank) {
-      throw ApiError.forbidden("A role cannot outrank your own role.");
-    }
-    if (input.rank !== undefined && input.rank <= role.rank && role.slug === "ADMIN") {
-      throw ApiError.forbidden("The administrator role keeps the highest rank.");
-    }
-
-    const nextPermissions = input.permissions ?? role.permissions;
-    if (input.permissions) {
-      const actorPermissions = await permissionsFor(req.userRole);
-      const beyond = input.permissions.filter(
-        (permission) => !actorPermissions.includes(permission as never),
-      );
-      if (beyond.length > 0) {
-        throw ApiError.forbidden(`You cannot grant a capability you do not hold: ${beyond.join(", ")}`);
-      }
-    }
-
-    const updated = await prisma.roleDefinition.update({
-      where: { id: role.id },
-      data: {
-        ...(input.name !== undefined ? { name: input.name } : {}),
-        ...(input.description !== undefined ? { description: input.description } : {}),
-        ...(input.permissions !== undefined ? { permissions: input.permissions } : {}),
-        ...(input.rank !== undefined ? { rank: input.rank } : {}),
-      },
+    await recordAudit(req, {
+      action: "prize.update",
+      targetType: "prize",
+      targetId: award.id,
+      detail: { period: award.period, periodKey: award.periodKey, rank: award.rank, status },
     });
-
-    const losesGovernance =
-      role.permissions.includes("admin.roles.manage") &&
-      !nextPermissions.includes("admin.roles.manage");
-    if (losesGovernance) {
-      throw ApiError.conflict(
-        "Removing admin.roles.manage from this role would leave no account able to manage roles.",
-      );
-    }
-
-    await refreshRoles();
-    await recordAction(req, {
-      action: "role.updated",
-      targetType: "ROLE",
-      targetId: role.slug,
-      summary: `Updated the role ${role.name}: now ${nextPermissions.length} capabilities`,
-      metadata: {
-        before: { permissions: role.permissions, rank: role.rank, name: role.name },
-        after: { permissions: nextPermissions, rank: updated.rank, name: updated.name },
-      },
-    });
-    res.json({ role: updated });
+    res.json({ award: updated });
   }),
 );
 
-adminRouter.delete(
-  "/roles/:id",
-  requirePermission("admin.roles.manage"),
-  validate(idParams, "params"),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const role = await prisma.roleDefinition.findFirst({
-      where: { OR: [{ id }, { slug: id }] },
-    });
-    if (!role) throw ApiError.notFound("That role could not be found.");
-    if (role.system) {
-      throw ApiError.conflict("The built-in Member, Moderator and Administrator roles cannot be deleted.");
-    }
-    const members = await prisma.user.count({ where: { role: role.slug } });
-    if (members > 0) {
-      throw ApiError.conflict(
-        `${members} ${members === 1 ? "account still uses" : "accounts still use"} this role. Reassign them first.`,
-      );
-    }
-
-    await prisma.roleDefinition.delete({ where: { id: role.id } });
-    await refreshRoles();
-    await recordAction(req, {
-      action: "role.deleted",
-      targetType: "ROLE",
-      targetId: role.slug,
-      summary: `Deleted the unused role ${role.name} (${role.slug})`,
-    });
-    res.status(204).end();
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Comprehensive reporting
-// ---------------------------------------------------------------------------
-
+/**
+ * The 3 ETB retry ledger for one day, newest first, for staff review. Payments
+ * are confirmed by the member when they pay in cash or by mobile money.
+ */
 adminRouter.get(
-  "/analytics",
-  requirePermission("admin.dashboard.view"),
-  validate(rangeQuery, "query"),
+  "/retry-payments",
+  requirePermission("quiz.payments"),
   asyncHandler(async (req, res) => {
-    const days = normalizeRange((req.query as { range?: number }).range);
-    const since = startOfWindow(days);
-    const previousSince = new Date(since.getTime() - days * DAY_MS);
+    const day =
+      typeof req.query.day === "string" && /^\d{4}-\d{2}-\d{2}$/.test(req.query.day)
+        ? req.query.day
+        : periodKeys().day;
 
-    const [
-      users,
-      posts,
-      comments,
-      messages,
-      openReports,
-      likes,
-      bookmarks,
-      media,
-      events,
-      places,
-      newUsers,
-      prevUsers,
-      newPosts,
-      prevPosts,
-      newComments,
-      prevComments,
-      newReports,
-      prevReports,
-      roleRows,
-      byReasonRows,
-      byTargetRows,
-      reportStatusRows,
-      resolvedInWindow,
-      topReportedRows,
-      categories,
-      categoryTotals,
-      topPosts,
-      postAuthors,
-      commentAuthors,
-      messagesInWindow,
-    ] = await Promise.all([
-      prisma.user.count(),
-      prisma.post.count(),
-      prisma.comment.count({ where: { deletedAt: null } }),
-      prisma.message.count(),
-      prisma.report.count({ where: { status: "OPEN" } }),
-      prisma.postLike.count(),
-      prisma.bookmark.count(),
-      prisma.media.count(),
-      prisma.event.count(),
-      prisma.place.count(),
-      prisma.user.count({ where: { createdAt: { gte: since } } }),
-      prisma.user.count({ where: { createdAt: { gte: previousSince, lt: since } } }),
-      prisma.post.count({ where: { createdAt: { gte: since } } }),
-      prisma.post.count({ where: { createdAt: { gte: previousSince, lt: since } } }),
-      prisma.comment.count({ where: { createdAt: { gte: since }, deletedAt: null } }),
-      prisma.comment.count({ where: { createdAt: { gte: previousSince, lt: since }, deletedAt: null } }),
-      prisma.report.count({ where: { createdAt: { gte: since } } }),
-      prisma.report.count({ where: { createdAt: { gte: previousSince, lt: since } } }),
-      prisma.user.groupBy({ by: ["role"], _count: { _all: true } }),
-      prisma.report.groupBy({
-        by: ["reason"],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-        orderBy: { _count: { reason: "desc" } },
-        take: 6,
-      }),
-      prisma.report.groupBy({
-        by: ["targetType"],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-      }),
-      prisma.report.groupBy({ by: ["status"], _count: { _all: true } }),
-      prisma.report.findMany({
-        where: { resolvedAt: { gte: since } },
-        select: { createdAt: true, resolvedAt: true },
-        take: 500,
-        orderBy: { resolvedAt: "desc" },
-      }),
-      prisma.report.groupBy({
-        by: ["reporterId"],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-        orderBy: { _count: { reporterId: "desc" } },
-        take: 5,
-      }),
-      prisma.category.findMany({
-        include: { _count: { select: { posts: true } } },
-        orderBy: { sortOrder: "asc" },
-      }),
-      prisma.post.groupBy({
-        by: ["categoryId"],
-        _sum: { commentCount: true, likeCount: true, viewCount: true },
-      }),
-      prisma.post.findMany({
-        where: { createdAt: { gte: since } },
-        orderBy: [{ likeCount: "desc" }, { commentCount: "desc" }],
-        take: 5,
-        select: {
-          id: true,
-          title: true,
-          body: true,
-          likeCount: true,
-          commentCount: true,
-          viewCount: true,
-          createdAt: true,
-          author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-          category: { select: { id: true, name: true, slug: true, color: true } },
+    const [payments, totals] = await Promise.all([
+      prisma.quizPayment.findMany({
+        where: { day },
+        include: {
+          user: { select: { username: true, displayName: true, email: true, region: true } },
+          attempt: { select: { score: true, correctCount: true, completedAt: true, playIndex: true } },
         },
+        orderBy: { createdAt: "desc" },
+        take: 200,
       }),
-      prisma.post.groupBy({
-        by: ["authorId"],
-        where: { createdAt: { gte: since } },
-        _count: { _all: true },
-      }),
-      prisma.comment.groupBy({
-        by: ["authorId"],
-        where: { createdAt: { gte: since }, deletedAt: null },
-        _count: { _all: true },
-      }),
-      prisma.message.count({ where: { createdAt: { gte: since } } }),
+      prisma.quizPayment.groupBy({ by: ["status"], where: { day }, _sum: { amountEtb: true }, _count: { _all: true } }),
     ]);
 
-    const [memberSeries, postSeries, commentSeries, reportSeries] = await Promise.all([
-      prisma.$queryRaw<DailyRow[]>`
-        SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
-        FROM "User" WHERE "createdAt" >= ${since}
-        GROUP BY 1 ORDER BY 1
-      `,
-      prisma.$queryRaw<DailyRow[]>`
-        SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
-        FROM "Post" WHERE "createdAt" >= ${since}
-        GROUP BY 1 ORDER BY 1
-      `,
-      prisma.$queryRaw<DailyRow[]>`
-        SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
-        FROM "Comment" WHERE "createdAt" >= ${since} AND "deletedAt" IS NULL
-        GROUP BY 1 ORDER BY 1
-      `,
-      prisma.$queryRaw<DailyRow[]>`
-        SELECT date_trunc('day', "createdAt")::date AS day, COUNT(*) AS count
-        FROM "Report" WHERE "createdAt" >= ${since}
-        GROUP BY 1 ORDER BY 1
-      `,
-    ]);
-
-    const series = emptySeries(since, days);
-    const byDay = new Map(series.map((entry) => [entry.day, entry]));
-    const apply = (rows: DailyRow[], key: "members" | "posts" | "comments" | "reports") => {
-      for (const row of rows) {
-        const entry = byDay.get(dayKey(new Date(row.day)));
-        if (entry) entry[key] = Number(row.count);
-      }
-    };
-    apply(memberSeries, "members");
-    apply(postSeries, "posts");
-    apply(commentSeries, "comments");
-    apply(reportSeries, "reports");
-
-    const contributorCounts = new Map<string, { posts: number; comments: number }>();
-    for (const row of postAuthors) {
-      contributorCounts.set(row.authorId, { posts: row._count._all, comments: 0 });
-    }
-    for (const row of commentAuthors) {
-      const current = contributorCounts.get(row.authorId) ?? { posts: 0, comments: 0 };
-      current.comments = row._count._all;
-      contributorCounts.set(row.authorId, current);
-    }
-
-    const contributorIds = [...contributorCounts.keys()];
-    const [contributorUsers, returningContributors] = await Promise.all([
-      contributorIds.length
-        ? prisma.user.findMany({
-            where: { id: { in: contributorIds } },
-            select: { id: true, username: true, displayName: true, avatarUrl: true },
-          })
-        : Promise.resolve([]),
-      contributorIds.length
-        ? prisma.user.count({ where: { id: { in: contributorIds }, createdAt: { lt: since } } })
-        : Promise.resolve(0),
-    ]);
-
-    const contributorProfiles = new Map(contributorUsers.map((user) => [user.id, user]));
-    const topContributors = [...contributorCounts.entries()]
-      .map(([id, counts]) => ({
-        ...(contributorProfiles.get(id) ?? {
-          id,
-          username: "unknown",
-          displayName: "Former member",
-          avatarUrl: null,
-        }),
-        posts: counts.posts,
-        comments: counts.comments,
-        activity: counts.posts + counts.comments,
-      }))
-      .sort((a, b) => b.activity - a.activity)
-      .slice(0, 6);
-
-    const reporterProfiles = topReportedRows.length
-      ? await prisma.user.findMany({
-          where: { id: { in: topReportedRows.map((row) => row.reporterId) } },
-          select: { id: true, username: true, displayName: true, avatarUrl: true },
-        })
-      : [];
-    const reporterMap = new Map(reporterProfiles.map((user) => [user.id, user]));
-
-    const categorySums = new Map(
-      categoryTotals.map((row) => [
-        row.categoryId,
-        {
-          comments: row._sum.commentCount ?? 0,
-          likes: row._sum.likeCount ?? 0,
-          views: row._sum.viewCount ?? 0,
-        },
-      ]),
-    );
-
-    const resolutionHours = resolvedInWindow
-      .filter((report) => report.resolvedAt)
-      .map((report) => (report.resolvedAt!.getTime() - report.createdAt.getTime()) / 3_600_000);
-
-    const reportStatus = new Map(reportStatusRows.map((row) => [row.status, row._count._all]));
-
+    const confirmed = totals.find((t) => t.status === "CONFIRMED");
     res.json({
-      range: days,
-      generatedAt: new Date().toISOString(),
-      totals: {
-        users,
-        posts,
-        comments,
-        messages,
-        events,
-        places,
-        likes,
-        bookmarks,
-        media,
-        openReports,
-      },
-      deltas: {
-        users: { current: newUsers, previous: prevUsers },
-        posts: { current: newPosts, previous: prevPosts },
-        comments: { current: newComments, previous: prevComments },
-        reports: { current: newReports, previous: prevReports },
-      },
-      roleBreakdown: roleRows.map((row) => ({ role: row.role, count: row._count._all })),
-      series,
-      engagement: {
-        activeContributors: contributorIds.length,
-        returningContributors,
-        returningRate: contributorIds.length
-          ? Math.round((returningContributors / contributorIds.length) * 100)
-          : 0,
-        postsPerMember: users ? Math.round((posts / users) * 10) / 10 : 0,
-        commentsPerPost: posts ? Math.round((comments / posts) * 10) / 10 : 0,
-        likesPerPost: posts ? Math.round((likes / posts) * 10) / 10 : 0,
-        messagesSent: messagesInWindow,
-      },
-      moderation: {
-        open: reportStatus.get("OPEN") ?? 0,
-        resolved: reportStatus.get("RESOLVED") ?? 0,
-        dismissed: reportStatus.get("DISMISSED") ?? 0,
-        filedInRange: newReports,
-        resolvedInRange: resolvedInWindow.length,
-        avgResolutionHours: resolutionHours.length
-          ? Math.round(
-              (resolutionHours.reduce((sum, value) => sum + value, 0) / resolutionHours.length) * 10,
-            ) / 10
-          : null,
-        byReason: byReasonRows.map((row) => ({ reason: row.reason, count: row._count._all })),
-        byTarget: byTargetRows.map((row) => ({
-          targetType: row.targetType,
-          count: row._count._all,
-        })),
-        topReporters: topReportedRows.map((row) => {
-          const profile = reporterMap.get(row.reporterId);
-          return {
-            id: row.reporterId,
-            username: profile?.username ?? "unknown",
-            displayName: profile?.displayName ?? "Former member",
-            avatarUrl: profile?.avatarUrl ?? null,
-            count: row._count._all,
-          };
-        }),
-      },
-      rooms: categories.map(({ _count, ...category }) => {
-        const sums = categorySums.get(category.id);
-        return {
-          id: category.id,
-          name: category.name,
-          slug: category.slug,
-          color: category.color,
-          posts: _count.posts,
-          comments: sums?.comments ?? 0,
-          likes: sums?.likes ?? 0,
-          views: sums?.views ?? 0,
-        };
-      }),
-      topPosts: topPosts.map((post) => ({
-        id: post.id,
-        title: post.title,
-        excerpt: post.body.slice(0, 180),
-        likeCount: post.likeCount,
-        commentCount: post.commentCount,
-        viewCount: post.viewCount,
-        createdAt: post.createdAt,
-        author: post.author,
-        category: post.category,
-      })),
-      topContributors,
+      day,
+      priceEtb: 3,
+      count: payments.length,
+      totalEtb: confirmed?._sum.amountEtb ?? 0,
+      confirmedCount: confirmed?._count._all ?? 0,
+      payments,
     });
   }),
 );
 
-/** Kept for older clients: a compact version of the overview totals. */
+// ---------------------------------------------------------------------------
+// Dashboard overview and member management
+// ---------------------------------------------------------------------------
+
+/** Counters and recent activity for the admin home screen. */
 adminRouter.get(
-  "/stats",
-  requirePermission("admin.dashboard.view"),
+  "/overview",
+  requirePermission("overview.view"),
   asyncHandler(async (_req, res) => {
-    const weekAgo = new Date(Date.now() - 7 * DAY_MS);
-    const [users, posts, comments, messages, openReports, newMembers, categories] =
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const [users, banned, posts, comments, likes, follows, messages, destinations, attempts, recentPosts] =
       await Promise.all([
         prisma.user.count(),
-        prisma.post.count(),
-        prisma.comment.count({ where: { deletedAt: null } }),
-        prisma.message.count(),
-        prisma.report.count({ where: { status: "OPEN" } }),
-        prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-        prisma.category.findMany({
-          include: { _count: { select: { posts: true } } },
-          orderBy: { sortOrder: "asc" },
-        }),
+        prisma.user.count({ where: { banned: true } }),
+        prisma.experiencePost.count({ where: { deletedAt: null } }),
+        prisma.experienceComment.count({ where: { deletedAt: null } }),
+        prisma.experienceLike.count(),
+        prisma.follow.count(),
+        prisma.directMessage.count(),
+        prisma.destination.count(),
+        prisma.quizAttempt.count({ where: { completedAt: { not: null } } }),
+        prisma.user.count({ where: { createdAt: { gte: since } } }),
       ]);
 
     res.json({
-      totals: { users, posts, comments, messages, openReports, newMembers },
-      categories: categories.map(({ _count, ...category }) => ({
-        ...category,
-        postCount: _count.posts,
-      })),
+      totals: { users, banned, posts, comments, likes, follows, messages, destinations, attempts, newUsers30d: recentPosts },
     });
   }),
 );
 
-// ---------------------------------------------------------------------------
-// Member management
-// ---------------------------------------------------------------------------
-
+/** Member list with activity counters, searchable by name, username or email. */
 adminRouter.get(
   "/users",
-  requirePermission("admin.users.view"),
-  validate(userListQuery, "query"),
+  requirePermission("members.view"),
   asyncHandler(async (req, res) => {
-    const query = req.query as unknown as z.infer<typeof userListQuery>;
-    const limit = parseLimit(query.limit, 20);
-    const page = parsePage(query.page);
-    const weekAgo = new Date(Date.now() - 7 * DAY_MS);
+    const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+    const filter = typeof req.query.filter === "string" ? req.query.filter : "all";
+    // Staff are the roles that carry at least one capability, custom roles included.
+    const staffRoleNames = (await prisma.role.findMany({ select: { name: true, permissions: true } }))
+      .filter((role) => role.permissions.length > 0)
+      .map((role) => role.name);
 
-    const where: Prisma.UserWhereInput = {
-      ...(query.q
-        ? {
-            OR: [
-              { username: { contains: query.q, mode: "insensitive" } },
-              { email: { contains: query.q, mode: "insensitive" } },
-              { displayName: { contains: query.q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(query.role ? { role: query.role } : {}),
-      ...(query.status === "suspended" ? { banned: true } : {}),
-      ...(query.status === "active" ? { banned: false } : {}),
-    };
-
-    const orderBy: Prisma.UserOrderByWithRelationInput =
-      query.sort === "oldest"
-        ? { createdAt: "asc" }
-        : query.sort === "posts"
-          ? { posts: { _count: "desc" } }
-          : query.sort === "comments"
-            ? { comments: { _count: "desc" } }
-            : query.sort === "recent"
-              ? { lastSeenAt: { sort: "desc", nulls: "last" } }
-              : { createdAt: "desc" };
-
-    const allRoles = await listRoles();
-    const adminSlugs = allRoles
-      .filter((role) => role.permissions.includes("admin.roles.manage"))
-      .map((role) => role.slug);
-    const moderatorSlugs = allRoles
-      .filter(
-        (role) => !role.permissions.includes("admin.roles.manage") && role.permissions.some((permission) => permission.startsWith("admin.")),
-      )
-      .map((role) => role.slug);
-
-    const [users, total, admins, moderators, suspended, newThisWeek] = await Promise.all([
-      prisma.user.findMany({
-        where,
-        select: {
-          ...selfUserSelect,
-          banned: true,
-          suspendedAt: true,
-          suspendedReason: true,
-          lastSeenAt: true,
-          _count: { select: { posts: true, comments: true, followers: true, reportsFiled: true } },
-        },
-        orderBy,
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.user.count({ where }),
-      prisma.user.count({ where: { role: { in: adminSlugs } } }),
-      prisma.user.count({ where: { role: { in: moderatorSlugs } } }),
-      prisma.user.count({ where: { banned: true } }),
-      prisma.user.count({ where: { createdAt: { gte: weekAgo } } }),
-    ]);
-
-    res.json({
-      users: users.map(({ _count, ...user }) => ({
-        ...user,
-        postCount: _count.posts,
-        commentCount: _count.comments,
-        followerCount: _count.followers,
-        reportCount: _count.reportsFiled,
-      })),
-      summary: { total, admins, moderators, suspended, newThisWeek },
-      meta: { page, limit, total, hasMore: page * limit < total },
-    });
-  }),
-);
-
-adminRouter.get(
-  "/users/:id",
-  requirePermission("admin.users.view"),
-  validate(idParams, "params"),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const user = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        ...selfUserSelect,
-        banned: true,
-        suspendedAt: true,
-        suspendedReason: true,
-        lastSeenAt: true,
-        _count: {
-          select: {
-            posts: true,
-            comments: true,
-            followers: true,
-            following: true,
-            reportsFiled: true,
-            bookmarks: true,
-          },
-        },
-      },
-    });
-    if (!user) throw ApiError.notFound("That member could not be found.");
-
-    const [recentPosts, reportsAgainst, recentActions] = await Promise.all([
-      prisma.post.findMany({
-        where: { authorId: id },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: {
-          id: true,
-          title: true,
-          createdAt: true,
-          likeCount: true,
-          commentCount: true,
-          category: { select: { name: true, slug: true, color: true } },
-        },
-      }),
-      prisma.report.findMany({
-        where: { targetType: "USER", targetId: id },
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        select: { id: true, reason: true, status: true, createdAt: true, details: true },
-      }),
-      prisma.adminAction.findMany({
-        where: { targetType: "USER", targetId: id },
-        orderBy: { createdAt: "desc" },
-        take: 8,
-        include: { actor: { select: publicUserSelect } },
-      }),
-    ]);
-
-    const { _count, ...rest } = user;
-    res.json({
-      user: {
-        ...rest,
-        postCount: _count.posts,
-        commentCount: _count.comments,
-        followerCount: _count.followers,
-        followingCount: _count.following,
-        reportCount: _count.reportsFiled,
-        bookmarkCount: _count.bookmarks,
-      },
-      recentPosts,
-      reportsAgainst,
-      recentActions,
-    });
-  }),
-);
-
-adminRouter.patch(
-  "/users/:id",
-  requirePermission("admin.users.manage"),
-  validate(idParams, "params"),
-  validate(updateUserSchema),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const data = req.body as z.infer<typeof updateUserSchema>;
-    const actorRole = req.userRole!;
-
-    if (id === req.userId) {
-      throw ApiError.badRequest("You cannot change your own role or suspension status.");
-    }
-
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: {
-        id: true,
-        role: true,
-        banned: true,
-        username: true,
-        displayName: true,
-        suspendedReason: true,
-      },
-    });
-    if (!target) throw ApiError.notFound("That member could not be found.");
-
-    if (!canManageRole(actorRole, target.role)) {
-      throw ApiError.forbidden("You cannot act on a member whose role outranks yours.");
-    }
-
-    const roleChanged = data.role !== undefined && data.role !== target.role;
-    if (roleChanged) {
-      const actorPermissions = await permissionsFor(actorRole);
-      if (!actorPermissions.includes("admin.roles.manage")) {
-        throw ApiError.forbidden("Your role cannot change member roles.");
-      }
-      const nextRole = await getRole(data.role);
-      if (!nextRole) throw ApiError.badRequest("That role does not exist.");
-      if (nextRole.rank >= roleRankSync(actorRole)) {
-        throw ApiError.forbidden("You cannot grant a role that outranks yours.");
-      }
-      const managesRoles = nextRole.permissions.includes("admin.roles.manage");
-      if (managesRoles) {
-        const holders = await prisma.user.count({
-          where: { role: { in: (await listRoles()).filter((r) => r.permissions.includes("admin.roles.manage")).map((r) => r.slug) } },
-        });
-        if (holders <= 1) {
-          throw ApiError.conflict("The community must keep at least one account that can manage roles.");
-        }
-      }
-    }
-
-    if (data.banned === true && !data.reason?.trim()) {
-      throw ApiError.badRequest("Add a short reason so the team knows why this member was suspended.");
-    }
-
-    const nextBanned = data.banned ?? target.banned;
-
-    const updated = await prisma.user.update({
-      where: { id },
-      data: {
-        ...(roleChanged && data.role ? { role: data.role } : {}),
-        ...(data.banned !== undefined
+    const users = await prisma.user.findMany({
+      where: {
+        ...(q
           ? {
-              banned: nextBanned,
-              suspendedAt: nextBanned ? new Date() : null,
-              suspendedReason: nextBanned ? data.reason?.trim() ?? null : null,
+              OR: [
+                { email: { contains: q, mode: "insensitive" } },
+                { username: { contains: q, mode: "insensitive" } },
+                { displayName: { contains: q, mode: "insensitive" } },
+              ],
             }
           : {}),
+        ...(filter === "banned" ? { banned: true } : {}),
+        ...(filter === "staff" ? { role: { in: staffRoleNames } } : {}),
       },
-      select: { ...selfUserSelect, banned: true, suspendedAt: true, suspendedReason: true },
-    });
-
-    const auditEntries: AuditInput[] = [];
-    if (roleChanged && data.role) {
-      auditEntries.push({
-        action: "user.role_changed",
-        targetType: "USER",
-        targetId: id,
-        summary: `Changed @${target.username} from ${target.role} to ${data.role}`,
-        metadata: { from: target.role, to: data.role },
-      });
-    }
-    if (data.banned !== undefined && nextBanned !== target.banned) {
-      auditEntries.push({
-        action: nextBanned ? "user.suspended" : "user.restored",
-        targetType: "USER",
-        targetId: id,
-        summary: nextBanned
-          ? `Suspended @${target.username}: ${data.reason?.trim() ?? "no reason given"}`
-          : `Restored access for @${target.username}`,
-        metadata: nextBanned ? { reason: data.reason?.trim() ?? null } : {},
-      });
-    }
-    for (const entry of auditEntries) await recordAction(req, entry);
-
-    res.json({ user: updated });
-  }),
-);
-
-adminRouter.delete(
-  "/users/:id",
-  requirePermission("admin.users.delete"),
-  validate(idParams, "params"),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    if (id === req.userId) throw ApiError.badRequest("Delete your account from Settings instead.");
-
-    const target = await prisma.user.findUnique({
-      where: { id },
-      select: { id: true, username: true, displayName: true, role: true },
-    });
-    if (!target) throw ApiError.notFound("That member could not be found.");
-    if (!canManageRole(req.userRole!, target.role)) {
-      throw ApiError.forbidden("You cannot delete an account whose role outranks yours.");
-    }
-    const targetRole = await getRole(target.role);
-    if (targetRole?.permissions.includes("admin.users.delete")) {
-      throw ApiError.forbidden("Demote this account's role before deleting it.");
-    }
-
-    await prisma.user.delete({ where: { id } });
-    await recordAction(req, {
-      action: "user.deleted",
-      targetType: "USER",
-      targetId: id,
-      summary: `Deleted the account @${target.username} (${target.displayName})`,
-      metadata: { role: target.role },
-    });
-    res.status(204).end();
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Reports & moderation
-// ---------------------------------------------------------------------------
-
-adminRouter.get(
-  "/reports/summary",
-  requirePermission("admin.reports.view"),
-  asyncHandler(async (_req, res) => {
-    const weekAgo = new Date(Date.now() - 7 * DAY_MS);
-    const [statusRows, reasonRows, targetRows, resolved, resolvedThisWeek] = await Promise.all([
-      prisma.report.groupBy({ by: ["status"], _count: { _all: true } }),
-      prisma.report.groupBy({
-        by: ["reason"],
-        where: { status: "OPEN" },
-        _count: { _all: true },
-        orderBy: { _count: { reason: "desc" } },
-        take: 8,
-      }),
-      prisma.report.groupBy({
-        by: ["targetType"],
-        where: { status: "OPEN" },
-        _count: { _all: true },
-      }),
-      prisma.report.findMany({
-        where: { resolvedAt: { not: null } },
-        select: { createdAt: true, resolvedAt: true },
-        orderBy: { resolvedAt: "desc" },
-        take: 400,
-      }),
-      prisma.report.count({ where: { resolvedAt: { gte: weekAgo } } }),
-    ]);
-
-    const status = new Map(statusRows.map((row) => [row.status, row._count._all]));
-    const hours = resolved
-      .filter((report) => report.resolvedAt)
-      .map((report) => (report.resolvedAt!.getTime() - report.createdAt.getTime()) / 3_600_000);
-
-    res.json({
-      counts: {
-        open: status.get("OPEN") ?? 0,
-        resolved: status.get("RESOLVED") ?? 0,
-        dismissed: status.get("DISMISSED") ?? 0,
-        resolvedThisWeek,
-      },
-      byReason: reasonRows.map((row) => ({ reason: row.reason, count: row._count._all })),
-      byTargetType: targetRows.map((row) => ({
-        targetType: row.targetType,
-        count: row._count._all,
-      })),
-      avgResolutionHours: hours.length
-        ? Math.round((hours.reduce((sum, value) => sum + value, 0) / hours.length) * 10) / 10
-        : null,
-    });
-  }),
-);
-
-adminRouter.get(
-  "/reports",
-  requirePermission("admin.reports.view"),
-  asyncHandler(async (req, res) => {
-    const status =
-      req.query.status === "RESOLVED" || req.query.status === "DISMISSED"
-        ? req.query.status
-        : "OPEN";
-    const targetType =
-      req.query.targetType === "POST" || req.query.targetType === "COMMENT" || req.query.targetType === "USER"
-        ? req.query.targetType
-        : undefined;
-    const page = parsePage(req.query.page);
-    const limit = parseLimit(req.query.limit, 20);
-    const where: Prisma.ReportWhereInput = { status, ...(targetType ? { targetType } : {}) };
-
-    const [reports, total] = await Promise.all([
-      prisma.report.findMany({
-        where,
-        include: {
-          reporter: { select: publicUserSelect },
-          resolvedBy: { select: publicUserSelect },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        displayName: true,
+        role: true,
+        region: true,
+        banned: true,
+        avatarUrl: true,
+        createdAt: true,
+        _count: {
+          select: { experiences: true, attempts: true, followers: true, following: true, messagesSent: true },
         },
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-      }),
-      prisma.report.count({ where }),
-    ]);
-
-    const postIds = reports.filter((r) => r.targetType === "POST").map((r) => r.targetId);
-    const commentIds = reports.filter((r) => r.targetType === "COMMENT").map((r) => r.targetId);
-    const userIds = reports.filter((r) => r.targetType === "USER").map((r) => r.targetId);
-
-    const [posts, comments, users] = await Promise.all([
-      postIds.length
-        ? prisma.post.findMany({
-            where: { id: { in: postIds } },
-            select: {
-              id: true,
-              title: true,
-              body: true,
-              author: { select: { username: true, displayName: true } },
-            },
-          })
-        : [],
-      commentIds.length
-        ? prisma.comment.findMany({
-            where: { id: { in: commentIds } },
-            select: {
-              id: true,
-              body: true,
-              postId: true,
-              deletedAt: true,
-              author: { select: { username: true, displayName: true } },
-            },
-          })
-        : [],
-      userIds.length
-        ? prisma.user.findMany({
-            where: { id: { in: userIds } },
-            select: { id: true, username: true, displayName: true },
-          })
-        : [],
-    ]);
-
-    const postMap = new Map(posts.map((post) => [post.id, post]));
-    const commentMap = new Map(comments.map((comment) => [comment.id, comment]));
-    const userMap = new Map(users.map((user) => [user.id, user]));
-
-    res.json({
-      reports: reports.map((report) => ({
-        ...report,
-        target:
-          report.targetType === "POST"
-            ? postMap.get(report.targetId) ?? null
-            : report.targetType === "COMMENT"
-              ? commentMap.get(report.targetId) ?? null
-              : userMap.get(report.targetId) ?? null,
-      })),
-      meta: { page, limit, total, status, hasMore: page * limit < total },
-    });
-  }),
-);
-
-adminRouter.patch(
-  "/reports/:id",
-  requirePermission("admin.reports.manage"),
-  validate(reportParams, "params"),
-  validate(updateReportSchema),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const { status, note } = req.body as z.infer<typeof updateReportSchema>;
-
-    const report = await prisma.report.findUnique({
-      where: { id },
-      select: { id: true, reason: true, targetType: true, targetId: true, status: true },
-    });
-    if (!report) throw ApiError.notFound("That report could not be found.");
-
-    const updated = await prisma.report.update({
-      where: { id },
-      data: {
-        status,
-        resolvedAt: status === "OPEN" ? null : new Date(),
-        resolvedById: status === "OPEN" ? null : req.userId!,
       },
-    });
-
-    await recordAction(req, {
-      action: status === "RESOLVED" ? "report.resolved" : "report.dismissed",
-      targetType: "REPORT",
-      targetId: id,
-      summary: `${status === "RESOLVED" ? "Resolved" : "Dismissed"} a ${report.reason.replaceAll("_", " ")} report on ${report.targetType.toLowerCase()} ${report.targetId}`,
-      metadata: { reason: report.reason, note: note ?? null },
-    });
-
-    res.json({ report: updated });
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Content moderation
-// ---------------------------------------------------------------------------
-
-adminRouter.get(
-  "/content",
-  requirePermission("admin.content.view"),
-  validate(contentQuery, "query"),
-  asyncHandler(async (req, res) => {
-    const query = req.query as unknown as z.infer<typeof contentQuery>;
-    const page = parsePage(query.page);
-    const limit = parseLimit(query.limit, 20);
-    const skip = (page - 1) * limit;
-
-    if (query.type === "COMMENT") {
-      const where: Prisma.CommentWhereInput = {
-        ...(query.q ? { body: { contains: query.q, mode: "insensitive" } } : {}),
-        ...(query.status === "visible"
-          ? { deletedAt: null }
-          : query.status === "removed"
-            ? { deletedAt: { not: null } }
-            : {}),
-        ...(query.category ? { post: { category: { slug: query.category } } } : {}),
-      };
-
-      const [comments, total] = await Promise.all([
-        prisma.comment.findMany({
-          where,
-          orderBy: { createdAt: "desc" },
-          skip,
-          take: limit,
-          select: {
-            id: true,
-            body: true,
-            likeCount: true,
-            replyCount: true,
-            createdAt: true,
-            deletedAt: true,
-            author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-            post: {
-              select: {
-                id: true,
-                title: true,
-                category: { select: { name: true, slug: true, color: true } },
-              },
-            },
-          },
-        }),
-        prisma.comment.count({ where }),
-      ]);
-
-      res.json({
-        items: comments.map((comment) => ({
-          id: comment.id,
-          type: "COMMENT" as const,
-          body: comment.body,
-          likeCount: comment.likeCount,
-          replyCount: comment.replyCount,
-          createdAt: comment.createdAt,
-          removedAt: comment.deletedAt,
-          author: comment.author,
-          post: comment.post,
-        })),
-        meta: { page, limit, total, hasMore: page * limit < total },
-      });
-      return;
-    }
-
-    const where: Prisma.PostWhereInput = {
-      ...(query.q
-        ? {
-            OR: [
-              { title: { contains: query.q, mode: "insensitive" } },
-              { body: { contains: query.q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-      ...(query.category ? { category: { slug: query.category } } : {}),
-    };
-
-    const [posts, total] = await Promise.all([
-      prisma.post.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip,
-        take: limit,
-        select: {
-          id: true,
-          title: true,
-          body: true,
-          likeCount: true,
-          commentCount: true,
-          viewCount: true,
-          createdAt: true,
-          author: { select: { id: true, username: true, displayName: true, avatarUrl: true } },
-          category: { select: { name: true, slug: true, color: true } },
-        },
-      }),
-      prisma.post.count({ where }),
-    ]);
-
-    res.json({
-      items: posts.map((post) => ({
-        id: post.id,
-        type: "POST" as const,
-        title: post.title,
-        body: post.body,
-        likeCount: post.likeCount,
-        commentCount: post.commentCount,
-        viewCount: post.viewCount,
-        createdAt: post.createdAt,
-        removedAt: null,
-        author: post.author,
-        category: post.category,
-      })),
-      meta: { page, limit, total, hasMore: page * limit < total },
-    });
-  }),
-);
-
-adminRouter.delete(
-  "/content/:type/:id",
-  requirePermission("admin.content.manage"),
-  validate(contentParams, "params"),
-  asyncHandler(async (req, res) => {
-    const type = String(req.params.type);
-    const id = String(req.params.id);
-
-    if (type === "COMMENT") {
-      const comment = await prisma.comment.findUnique({
-        where: { id },
-        select: { id: true, body: true, deletedAt: true, authorId: true },
-      });
-      if (!comment) throw ApiError.notFound("That comment could not be found.");
-      if (comment.deletedAt) throw ApiError.badRequest("That comment is already removed.");
-
-      // Soft delete preserves thread structure; the reading UI shows a tombstone.
-      await prisma.comment.update({
-        where: { id },
-        data: { deletedAt: new Date(), body: "" },
-      });
-      await recordAction(req, {
-        action: "content.comment_removed",
-        targetType: "COMMENT",
-        targetId: id,
-        summary: `Removed a comment by ${comment.authorId}`,
-        metadata: { preview: comment.body.slice(0, 140) },
-      });
-      res.status(204).end();
-      return;
-    }
-
-    const post = await prisma.post.findUnique({
-      where: { id },
-      select: { id: true, title: true, authorId: true },
-    });
-    if (!post) throw ApiError.notFound("That post could not be found.");
-
-    await prisma.post.delete({ where: { id } });
-    await recordAction(req, {
-      action: "content.post_deleted",
-      targetType: "POST",
-      targetId: id,
-      summary: `Deleted the post “${post.title ?? "Untitled"}” by ${post.authorId}`,
-    });
-    res.status(204).end();
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Rooms, announcements & audit trail
-// ---------------------------------------------------------------------------
-
-adminRouter.get(
-  "/categories",
-  requirePermission("admin.categories.view"),
-  asyncHandler(async (_req, res) => {
-    const categories = await prisma.category.findMany({
-      include: { _count: { select: { posts: true } } },
-      orderBy: { sortOrder: "asc" },
-    });
-    res.json({
-      categories: categories.map(({ _count, ...category }) => ({
-        ...category,
-        postCount: _count.posts,
-      })),
-    });
-  }),
-);
-
-adminRouter.post(
-  "/categories",
-  requirePermission("admin.categories.manage"),
-  validate(categorySchema),
-  asyncHandler(async (req, res) => {
-    const data = req.body as z.infer<typeof categorySchema>;
-    const existing = await prisma.category.findFirst({
-      where: { OR: [{ slug: data.slug }, { name: data.name }] },
-      select: { id: true },
-    });
-    if (existing) throw ApiError.conflict("A room with that name or slug already exists.");
-
-    const category = await prisma.category.create({ data });
-    await recordAction(req, {
-      action: "category.created",
-      targetType: "CATEGORY",
-      targetId: category.id,
-      summary: `Created the room ${category.name}`,
-      metadata: { slug: category.slug, kind: category.kind },
-    });
-    res.status(201).json({ category });
-  }),
-);
-
-adminRouter.patch(
-  "/categories/:id",
-  requirePermission("admin.categories.manage"),
-  validate(idParams, "params"),
-  validate(categoryUpdateSchema),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const data = req.body as z.infer<typeof categoryUpdateSchema>;
-    const category = await prisma.category
-      .update({ where: { id }, data })
-      .catch(() => null);
-    if (!category) throw ApiError.notFound("That category could not be found.");
-
-    await recordAction(req, {
-      action: "category.updated",
-      targetType: "CATEGORY",
-      targetId: category.id,
-      summary: `Updated the room ${category.name}`,
-      metadata: data as Prisma.InputJsonValue,
-    });
-    res.json({ category });
-  }),
-);
-
-adminRouter.delete(
-  "/categories/:id",
-  requirePermission("admin.categories.manage"),
-  validate(idParams, "params"),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const category = await prisma.category.findUnique({
-      where: { id },
-      include: { _count: { select: { posts: true } } },
-    });
-    if (!category) throw ApiError.notFound("That category could not be found.");
-    if (category._count.posts > 0) {
-      throw ApiError.conflict("Move or delete the posts in this category before removing it.");
-    }
-
-    await prisma.category.delete({ where: { id } });
-    await recordAction(req, {
-      action: "category.deleted",
-      targetType: "CATEGORY",
-      targetId: id,
-      summary: `Deleted the room ${category.name}`,
-    });
-    res.status(204).end();
-  }),
-);
-
-adminRouter.post(
-  "/announcements",
-  requirePermission("admin.announcements.publish"),
-  validate(announcementSchema),
-  asyncHandler(async (req, res) => {
-    const { title, body } = req.body as z.infer<typeof announcementSchema>;
-
-    const category = await prisma.category.findUnique({ where: { slug: "whats-new" } });
-    if (!category) throw ApiError.badRequest("The What's New category is missing.");
-
-    const post = await prisma.post.create({
-      data: { authorId: req.userId!, categoryId: category.id, title, body },
-    });
-
-    const recipients = await prisma.user.findMany({
-      where: { banned: false, NOT: { id: req.userId! } },
-      select: { id: true },
-    });
-
-    if (recipients.length > 0) {
-      await prisma.notification.createMany({
-        data: recipients.map((recipient) => ({
-          userId: recipient.id,
-          actorId: req.userId!,
-          type: "ANNOUNCEMENT" as const,
-          body: title,
-          postId: post.id,
-        })),
-      });
-    }
-
-    await recordAction(req, {
-      action: "announcement.published",
-      targetType: "POST",
-      targetId: post.id,
-      summary: `Published the announcement “${title}” to ${recipients.length} members`,
-    });
-
-    emitToAll("announcement:new", { postId: post.id, title });
-    void pushAnnouncement({ postId: post.id, title, excludeUserId: req.userId! });
-    res.status(201).json({ post, notified: recipients.length });
-  }),
-);
-
-adminRouter.get(
-  "/audit",
-  requirePermission("admin.audit.view"),
-  validate(auditQuery, "query"),
-  asyncHandler(async (req, res) => {
-    const query = req.query as unknown as z.infer<typeof auditQuery>;
-    const page = parsePage(query.page);
-    const limit = parseLimit(query.limit, 30);
-
-    const where: Prisma.AdminActionWhereInput = {
-      ...(query.action ? { action: query.action } : {}),
-      ...(query.actorId ? { actorId: query.actorId } : {}),
-      ...(query.q
-        ? {
-            OR: [
-              { summary: { contains: query.q, mode: "insensitive" } },
-              { targetId: { contains: query.q, mode: "insensitive" } },
-            ],
-          }
-        : {}),
-    };
-
-    const [actions, total, kinds] = await Promise.all([
-      prisma.adminAction.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * limit,
-        take: limit,
-        include: { actor: { select: publicUserSelect } },
-      }),
-      prisma.adminAction.count({ where }),
-      prisma.adminAction.groupBy({ by: ["action"], _count: { _all: true } }),
-    ]);
-
-    res.json({
-      actions,
-      kinds: kinds
-        .map((row) => ({ action: row.action, count: row._count._all }))
-        .sort((a, b) => b.count - a.count),
-      meta: { page, limit, total, hasMore: page * limit < total },
-    });
-  }),
-);
-
-// ---------------------------------------------------------------------------
-// Joke Time scheduling
-// ---------------------------------------------------------------------------
-
-const jokeSessionSchema = z.object({
-  title: z.string().trim().min(1).max(80).optional(),
-  opensAt: z.coerce.date(),
-  closesAt: z.coerce.date(),
-});
-
-const jokeSessionPatchSchema = z.object({
-  title: z.string().trim().min(1).max(80).optional(),
-  opensAt: z.coerce.date().optional(),
-  closesAt: z.coerce.date().optional(),
-});
-
-async function assertNoJokeSessionOverlap(
-  opensAt: Date,
-  closesAt: Date,
-  excludeId?: string,
-): Promise<void> {
-  if (closesAt <= opensAt) {
-    throw ApiError.badRequest("Closing time must be after the opening time.");
-  }
-  const clash = await prisma.jokeSession.findFirst({
-    where: {
-      opensAt: { lt: closesAt },
-      closesAt: { gt: opensAt },
-      ...(excludeId ? { id: { not: excludeId } } : {}),
-    },
-    select: { id: true, opensAt: true, closesAt: true },
-  });
-  if (clash) {
-    throw ApiError.conflict("That window overlaps another Joke Time session.");
-  }
-}
-
-function jokeSessionStatusView(session: { opensAt: Date; closesAt: Date }): string {
-  const now = Date.now();
-  if (now < session.opensAt.getTime()) return "UPCOMING";
-  if (now >= session.closesAt.getTime()) return "CLOSED";
-  return "OPEN";
-}
-
-adminRouter.get(
-  "/joke-sessions",
-  requirePermission("admin.jokes.view"),
-  asyncHandler(async (_req, res) => {
-    const sessions = await prisma.jokeSession.findMany({
-      orderBy: { opensAt: "desc" },
-      include: {
-        _count: { select: { jokes: true } },
-        createdBy: { select: publicUserSelect },
-      },
+      orderBy: { createdAt: "desc" },
       take: 100,
     });
 
     res.json({
-      sessions: sessions.map((session) => ({
-        id: session.id,
-        title: session.title,
-        opensAt: session.opensAt,
-        closesAt: session.closesAt,
-        createdAt: session.createdAt,
-        jokeCount: session._count.jokes,
-        status: jokeSessionStatusView(session),
-        createdBy: session.createdBy,
+      users: users.map(({ _count, ...u }) => ({
+        ...u,
+        stories: _count.experiences,
+        attempts: _count.attempts,
+        followers: _count.followers,
+        following: _count.following,
+        messagesSent: _count.messagesSent,
       })),
     });
   }),
 );
 
-adminRouter.post(
-  "/joke-sessions",
-  requirePermission("admin.jokes.manage"),
-  validate(jokeSessionSchema),
-  asyncHandler(async (req, res) => {
-    const data = req.body as z.infer<typeof jokeSessionSchema>;
-    await assertNoJokeSessionOverlap(data.opensAt, data.closesAt);
-
-    const session = await prisma.jokeSession.create({
-      data: {
-        title: data.title?.trim() || "Joke Time",
-        opensAt: data.opensAt,
-        closesAt: data.closesAt,
-        createdById: req.userId!,
-      },
-    });
-
-    await recordAction(req, {
-      action: "jokeSession.create",
-      targetType: "jokeSession",
-      targetId: session.id,
-      summary: `Scheduled “${session.title}” from ${session.opensAt.toISOString()} to ${session.closesAt.toISOString()}.`,
-    });
-
-    res.status(201).json({ session: { ...session, status: jokeSessionStatusView(session), jokeCount: 0 } });
-  }),
-);
-
+/** Promote or demote a member, including into a custom role. */
 adminRouter.patch(
-  "/joke-sessions/:id",
-  requirePermission("admin.jokes.manage"),
-  validate(idParams, "params"),
-  validate(jokeSessionPatchSchema),
+  "/users/:id/role",
+  requirePermission("roles.manage"),
+  validate(z.object({ role: z.string().trim().min(1).max(40) })),
   asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const data = req.body as z.infer<typeof jokeSessionPatchSchema>;
-    const existing = await prisma.jokeSession.findUnique({ where: { id } });
-    if (!existing) throw ApiError.notFound("That Joke Time session could not be found.");
-
-    const opensAt = data.opensAt ?? existing.opensAt;
-    const closesAt = data.closesAt ?? existing.closesAt;
-    await assertNoJokeSessionOverlap(opensAt, closesAt, id);
-
-    const session = await prisma.jokeSession.update({
-      where: { id },
-      data: {
-        ...(data.title !== undefined ? { title: data.title.trim() } : {}),
-        opensAt,
-        closesAt,
-      },
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) throw ApiError.notFound("User not found");
+    if (user.id === req.userId) throw ApiError.badRequest("You cannot change your own role");
+    const role = (req.body as { role: string }).role;
+    if (!(await roleExists(role))) throw ApiError.badRequest("That role does not exist");
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { role },
+      select: { id: true, username: true, role: true },
     });
-
-    await recordAction(req, {
-      action: "jokeSession.update",
-      targetType: "jokeSession",
-      targetId: session.id,
-      summary: `Rescheduled “${session.title}” to ${session.opensAt.toISOString()} – ${session.closesAt.toISOString()}.`,
+    await recordAudit(req, {
+      action: "member.role",
+      targetType: "user",
+      targetId: user.id,
+      detail: { from: user.role, to: role, username: user.username },
     });
-
-    res.json({ session: { ...session, status: jokeSessionStatusView(session) } });
+    res.json({ user: updated });
   }),
 );
 
-adminRouter.delete(
-  "/joke-sessions/:id",
-  requirePermission("admin.jokes.manage"),
-  validate(idParams, "params"),
-  asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const session = await prisma.jokeSession.findUnique({ where: { id } });
-    if (!session) throw ApiError.notFound("That Joke Time session could not be found.");
+/** Interaction report: engagement totals and the busiest places and stories. */
+adminRouter.get(
+  "/interactions",
+  requirePermission("overview.view"),
+  asyncHandler(async (_req, res) => {
+    const [topPlaces, topStories, dailyPosts] = await Promise.all([
+      prisma.destination.findMany({
+        select: {
+          id: true,
+          name: true,
+          region: true,
+          _count: { select: { experiences: true } },
+        },
+        orderBy: { experiences: { _count: "desc" } },
+        take: 6,
+      }),
+      prisma.experiencePost.findMany({
+        where: { deletedAt: null },
+        select: {
+          id: true,
+          title: true,
+          likeCount: true,
+          commentCount: true,
+          createdAt: true,
+          author: { select: { displayName: true, username: true } },
+        },
+        orderBy: [{ likeCount: "desc" }, { commentCount: "desc" }],
+        take: 6,
+      }),
+      prisma.experiencePost.findMany({
+        where: { deletedAt: null, createdAt: { gte: new Date(Date.now() - 13 * 24 * 60 * 60 * 1000) } },
+        select: { createdAt: true },
+      }),
+    ]);
 
-    await prisma.jokeSession.delete({ where: { id } });
-    await recordAction(req, {
-      action: "jokeSession.delete",
-      targetType: "jokeSession",
-      targetId: id,
-      summary: `Deleted the Joke Time session “${session.title}”.`,
+    const byDay = new Map<string, number>();
+    for (let i = 13; i >= 0; i -= 1) {
+      const day = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+      byDay.set(day, 0);
+    }
+    for (const post of dailyPosts) {
+      const day = post.createdAt.toISOString().slice(0, 10);
+      if (byDay.has(day)) byDay.set(day, (byDay.get(day) ?? 0) + 1);
+    }
+
+    res.json({
+      topPlaces: topPlaces.map((p) => ({ id: p.id, name: p.name, region: p.region, stories: p._count.experiences })),
+      topStories,
+      dailyStories: [...byDay.entries()].map(([day, count]) => ({ day, count })),
     });
-
-    res.status(204).end();
   }),
 );
 
 // ---------------------------------------------------------------------------
-// Events desk
-//
-// Most listings arrive from feeds, but the community team also publishes its
-// own: music festivals, cinema and theatre runs, socials, travel and hiking
-// outings, business conferences and seasonal celebrations. These routes create
-// official Event rows (kind EVENT) so they sit beside imported listings and
-// inherit the same list, filter and RSVP surfaces.
+// Places to visit
 // ---------------------------------------------------------------------------
 
-function eventSlug(title: string): string {
-  const base =
-    title
-      .toLowerCase()
-      .replace(/[^\w\s-]/g, "")
-      .trim()
-      .replace(/\s+/g, "-")
-      .replace(/-+/g, "-")
-      .slice(0, 60) || "event";
-  return `${base}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function assertEventWindow(start: Date, end: Date | null | undefined): void {
-  if (end && end.getTime() < start.getTime()) {
-    throw new ApiError(400, "The event cannot end before it starts.", "BAD_EVENT_WINDOW");
-  }
-}
-
-const adminEventQuery = z.object({
-  scope: z.enum(["upcoming", "past", "all"]).default("upcoming"),
-  // The desk manages the community team's own listings by default; imported
-  // feed rows are only shown when asked for.
-  source: z.enum(["curated", "imported", "all"]).default("curated"),
-  topic: z.enum(EVENT_TOPIC_VALUES).optional(),
-  limit: z.coerce.number().int().min(1).max(200).optional().default(100),
+const destinationSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  region: z.string().trim().min(2).max(60),
+  city: z.string().trim().max(80).optional().nullable(),
+  category: z.enum(["HISTORY", "HERITAGE", "NATURE", "WILDLIFE", "ADVENTURE", "CULTURE", "CITY", "FOOD"]),
+  tagline: z.string().trim().min(5).max(160),
+  summary: z.string().trim().min(20).max(1000),
+  description: z.string().trim().min(40).max(4000),
+  highlights: z.array(z.string().trim().min(2).max(160)).max(12).default([]),
+  activities: z.array(z.string().trim().min(2).max(160)).max(12).default([]),
+  bestTime: z.string().trim().min(3).max(160),
+  gettingThere: z.string().trim().min(5).max(2000),
+  entryFee: z.string().trim().max(160).optional().nullable(),
+  durationDays: z.coerce.number().int().min(1).max(30).default(2),
+  budgetLevel: z.coerce.number().int().min(1).max(3).default(2),
+  lat: z.coerce.number().min(-90).max(90),
+  lng: z.coerce.number().min(-180).max(180),
+  imageUrl: z.string().trim().max(2000).default(""),
+  featured: z.boolean().default(false),
+  tags: z.array(z.string().trim().min(1).max(40)).max(12).default([]),
 });
 
-const adminEventFields = {
-  title: z.string().trim().min(3, "Give the event a title of at least 3 characters").max(120),
-  description: z.string().trim().min(10, "Describe the event in at least 10 characters").max(3000),
-  topic: z.enum(EVENT_TOPIC_VALUES),
-  startDate: z.coerce.date(),
-  endDate: z.coerce.date().nullable().optional(),
-  location: z.string().trim().max(180).nullable().optional(),
-  coverUrl: z.string().trim().max(600).nullable().optional(),
-  maxAttendees: z.coerce.number().int().min(2).max(100000).nullable().optional(),
-};
-
-const createAdminEventSchema = z.object(adminEventFields);
-
-const updateAdminEventSchema = z.object({
-  title: adminEventFields.title.optional(),
-  description: adminEventFields.description.optional(),
-  topic: adminEventFields.topic.optional(),
-  startDate: adminEventFields.startDate.optional(),
-  endDate: adminEventFields.endDate,
-  location: adminEventFields.location,
-  coverUrl: adminEventFields.coverUrl,
-  maxAttendees: adminEventFields.maxAttendees,
-});
-
-const adminEventInclude = {
-  creator: { select: publicUserSelect },
-  category: { select: { id: true, name: true, slug: true, color: true } },
-  place: { select: { id: true, name: true, slug: true, city: true } },
-  source: { select: { id: true, key: true, name: true } },
-  _count: { select: { rsvps: true } },
-} satisfies Prisma.EventInclude;
-
-type AdminEventRecord = Prisma.EventGetPayload<{ include: typeof adminEventInclude }>;
-
-function adminEventView(event: AdminEventRecord) {
-  return {
-    id: event.id,
-    slug: event.slug,
-    title: event.title,
-    description: event.description,
-    topic: event.topic,
-    startDate: event.startDate.toISOString(),
-    endDate: event.endDate ? event.endDate.toISOString() : null,
-    location: event.location,
-    coverUrl: event.coverUrl,
-    maxAttendees: event.maxAttendees,
-    createdAt: event.createdAt.toISOString(),
-    attendeeCount: event._count.rsvps,
-    creator: event.creator,
-    category: event.category,
-    place: event.place,
-    source: event.source,
-  };
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
 }
 
 adminRouter.get(
-  "/events",
-  requirePermission("admin.events.view"),
-  validate(adminEventQuery, "query"),
-  asyncHandler(async (req, res) => {
-    const { scope, source, topic, limit } = req.query as unknown as z.infer<typeof adminEventQuery>;
-    const now = new Date();
-    const recent = new Date(now.getTime() - 2 * 60 * 60 * 1000);
-
-    const filters: Prisma.EventWhereInput[] = [{ kind: EventKind.EVENT }];
-    if (scope === "upcoming") {
-      // Keep something that started in the last couple of hours, and keep
-      // multi-day events until they close rather than dropping them on day two.
-      filters.push({
-        OR: [
-          { endDate: { gte: recent } },
-          { endDate: null, startDate: { gte: recent } },
-        ],
-      });
-    }
-    if (scope === "past") {
-      filters.push({
-        OR: [
-          { endDate: { lt: now } },
-          { endDate: null, startDate: { lt: now } },
-        ],
-      });
-    }
-    if (source === "curated") filters.push({ sourceId: null });
-    if (source === "imported") filters.push({ sourceId: { not: null } });
-    if (topic) filters.push({ topic: topic as EventTopic });
-
-    const events = await prisma.event.findMany({
-      where: { AND: filters },
-      include: adminEventInclude,
-      orderBy: { startDate: scope === "past" ? "desc" : "asc" },
-      take: limit,
+  "/destinations",
+  requirePermission("places.view"),
+  asyncHandler(async (_req, res) => {
+    const destinations = await prisma.destination.findMany({
+      orderBy: { name: "asc" },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        region: true,
+        category: true,
+        imageUrl: true,
+        featured: true,
+        rating: true,
+        createdAt: true,
+        _count: { select: { experiences: true } },
+      },
     });
-
-    res.json({ events: events.map(adminEventView) });
+    res.json({
+      destinations: destinations.map(({ _count, ...d }) => ({ ...d, stories: _count.experiences })),
+    });
   }),
 );
 
+/** Adds a place to the visitor catalogue. Staff may publish without a photo. */
 adminRouter.post(
-  "/events",
-  requirePermission("admin.events.manage"),
-  validate(createAdminEventSchema),
+  "/destinations",
+  requirePermission("places.manage"),
+  validate(destinationSchema),
   asyncHandler(async (req, res) => {
-    const data = req.body as z.infer<typeof createAdminEventSchema>;
-    assertEventWindow(data.startDate, data.endDate);
+    const input = req.body as z.infer<typeof destinationSchema>;
+    const base = slugify(input.name) || "place";
+    let slug = base;
+    for (let i = 2; await prisma.destination.findUnique({ where: { slug } }); i += 1) {
+      slug = `${base}-${i}`;
+    }
 
-    const event = await prisma.event.create({
+    const destination = await prisma.destination.create({
       data: {
-        slug: eventSlug(data.title),
-        kind: EventKind.EVENT,
-        title: data.title,
-        description: data.description,
-        topic: data.topic as EventTopic,
-        startDate: data.startDate,
-        endDate: data.endDate ?? null,
-        location: data.location?.trim() || null,
-        coverUrl: data.coverUrl?.trim() || null,
-        maxAttendees: data.maxAttendees ?? null,
-        creatorId: req.userId!,
+        ...input,
+        slug,
+        city: input.city ?? null,
+        entryFee: input.entryFee ?? null,
+        imageUrl: input.imageUrl ?? "",
       },
-      include: adminEventInclude,
     });
-
-    await recordAction(req, {
-      action: "event.create",
-      targetType: "event",
-      targetId: event.id,
-      summary: `Published “${event.title}” (${event.topic}) on ${event.startDate.toISOString()}.`,
+    await recordAudit(req, {
+      action: "place.create",
+      targetType: "destination",
+      targetId: destination.id,
+      detail: { name: destination.name, region: destination.region },
     });
-
-    // A newly published listing reaches open tabs immediately; the browser
-    // notification is raised by the client when the tab is in the background.
-    emitToAll("event:new", {
-      id: event.id,
-      slug: event.slug,
-      title: event.title,
-      startDate: event.startDate.toISOString(),
-      location: event.location,
-      kind: event.kind,
-      creatorId: event.creatorId,
-    });
-    void pushNewEvent(event);
-
-    res.status(201).json({ event: adminEventView(event) });
+    res.status(201).json({ destination });
   }),
 );
 
 adminRouter.patch(
-  "/events/:id",
-  requirePermission("admin.events.manage"),
-  validate(idParams, "params"),
-  validate(updateAdminEventSchema),
+  "/destinations/:id",
+  requirePermission("places.manage"),
+  validate(destinationSchema.partial()),
   asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const data = req.body as z.infer<typeof updateAdminEventSchema>;
-    const existing = await prisma.event.findUnique({ where: { id } });
-    if (!existing) throw ApiError.notFound("That event could not be found.");
-
-    const startDate = data.startDate ?? existing.startDate;
-    const endDate = data.endDate !== undefined ? data.endDate : existing.endDate;
-    assertEventWindow(startDate, endDate);
-
-    const event = await prisma.event.update({
-      where: { id },
-      data: {
-        ...(data.title !== undefined ? { title: data.title } : {}),
-        ...(data.description !== undefined ? { description: data.description } : {}),
-        ...(data.topic !== undefined ? { topic: data.topic as EventTopic } : {}),
-        ...(data.startDate !== undefined ? { startDate: data.startDate } : {}),
-        ...(data.endDate !== undefined ? { endDate: data.endDate } : {}),
-        ...(data.location !== undefined ? { location: data.location?.trim() || null } : {}),
-        ...(data.coverUrl !== undefined ? { coverUrl: data.coverUrl?.trim() || null } : {}),
-        ...(data.maxAttendees !== undefined ? { maxAttendees: data.maxAttendees } : {}),
-      },
-      include: adminEventInclude,
+    const destination = await prisma.destination.findUnique({ where: { id: req.params.id } });
+    if (!destination) throw ApiError.notFound("Place not found");
+    const updated = await prisma.destination.update({
+      where: { id: destination.id },
+      data: req.body as Partial<z.infer<typeof destinationSchema>>,
     });
-
-    await recordAction(req, {
-      action: "event.update",
-      targetType: "event",
-      targetId: event.id,
-      summary: `Updated “${event.title}” (${event.topic}) for ${event.startDate.toISOString()}.`,
+    await recordAudit(req, {
+      action: "place.update",
+      targetType: "destination",
+      targetId: destination.id,
+      detail: { name: updated.name, fields: Object.keys(req.body as object) },
     });
-
-    res.json({ event: adminEventView(event) });
+    res.json({ destination: updated });
   }),
 );
 
+/** Removing a place also hides it from recommendations. */
 adminRouter.delete(
-  "/events/:id",
-  requirePermission("admin.events.manage"),
-  validate(idParams, "params"),
+  "/destinations/:id",
+  requirePermission("places.manage"),
   asyncHandler(async (req, res) => {
-    const id = String(req.params.id);
-    const event = await prisma.event.findUnique({ where: { id }, select: { id: true, title: true } });
-    if (!event) throw ApiError.notFound("That event could not be found.");
-
-    await prisma.event.delete({ where: { id } });
-    await recordAction(req, {
-      action: "event.delete",
-      targetType: "event",
-      targetId: id,
-      summary: `Deleted the event “${event.title}”.`,
+    const destination = await prisma.destination.findUnique({ where: { id: req.params.id } });
+    if (!destination) throw ApiError.notFound("Place not found");
+    await prisma.destination.delete({ where: { id: destination.id } });
+    await recordAudit(req, {
+      action: "place.delete",
+      targetType: "destination",
+      targetId: destination.id,
+      detail: { name: destination.name },
     });
-
     res.status(204).end();
+  }),
+);
+
+const awardSchema = z.object({
+  rank: z.number().int().min(1).max(20),
+  userId: z.string().min(1),
+  name: z.string().trim().min(2).max(120),
+  description: z.string().trim().max(500).optional().nullable(),
+  amountEtb: z.number().int().min(0).max(10_000_000).optional().nullable(),
+  imageUrl: z.string().trim().max(600).optional().nullable(),
+});
+
+/** Assigns a prize to a member by hand, e.g. for a special award. */
+adminRouter.post(
+  "/prizes/:period/:key/award",
+  requirePermission("quiz.prizes"),
+  validate(awardSchema),
+  asyncHandler(async (req, res) => {
+    const period = prizePeriodParam(req.params.period);
+    const key = prizeKeyParam(period, req.params.key);
+    const input = req.body as z.infer<typeof awardSchema>;
+    const user = await prisma.user.findUnique({ where: { id: input.userId }, select: { id: true } });
+    if (!user) throw ApiError.notFound("User not found");
+
+    const award = await prisma.prizeAward.upsert({
+      where: { period_periodKey_rank: { period, periodKey: key, rank: input.rank } },
+      create: {
+        period,
+        periodKey: key,
+        rank: input.rank,
+        userId: input.userId,
+        name: input.name,
+        description: input.description?.trim() || null,
+        amountEtb: input.amountEtb ?? null,
+        imageUrl: input.imageUrl?.trim() || null,
+      },
+      update: {
+        userId: input.userId,
+        name: input.name,
+        description: input.description?.trim() || null,
+        amountEtb: input.amountEtb ?? null,
+        imageUrl: input.imageUrl?.trim() || null,
+      },
+      include: { user: { select: { username: true, displayName: true, email: true } } },
+    });
+    await recordAudit(req, {
+      action: "prize.award",
+      targetType: "prize",
+      targetId: award.id,
+      detail: { period, periodKey: key, rank: input.rank, amountEtb: input.amountEtb ?? null, userId: input.userId },
+    });
+    res.status(201).json({ award });
+  }),
+);
+
+/** Moderation: hide a shared experience (soft delete). */
+adminRouter.delete(
+  "/experiences/:id",
+  requirePermission("content.moderate"),
+  asyncHandler(async (req, res) => {
+    const post = await prisma.experiencePost.findUnique({ where: { id: req.params.id } });
+    if (!post || post.deletedAt) throw ApiError.notFound("Experience not found");
+    await prisma.experiencePost.update({ where: { id: post.id }, data: { deletedAt: new Date() } });
+    await recordAudit(req, {
+      action: "story.hide",
+      targetType: "experience",
+      targetId: post.id,
+      detail: { title: post.title, authorId: post.authorId },
+    });
+    res.status(204).end();
+  }),
+);
+
+/** Ban or unban a member. Banned accounts are rejected by the auth middleware. */
+adminRouter.patch(
+  "/users/:id/ban",
+  requirePermission("members.manage"),
+  validate(z.object({ banned: z.boolean() })),
+  asyncHandler(async (req, res) => {
+    const user = await prisma.user.findUnique({ where: { id: req.params.id } });
+    if (!user) throw ApiError.notFound("User not found");
+    if (user.id === req.userId) throw ApiError.badRequest("You cannot ban your own account");
+    const updated = await prisma.user.update({
+      where: { id: user.id },
+      data: { banned: (req.body as { banned: boolean }).banned },
+      select: { id: true, username: true, banned: true },
+    });
+    await recordAudit(req, {
+      action: updated.banned ? "member.suspend" : "member.restore",
+      targetType: "user",
+      targetId: user.id,
+      detail: { username: user.username },
+    });
+    res.json({ user: updated });
   }),
 );

@@ -44,6 +44,15 @@ export const uploadLimiter = rateLimit({
   handler,
 });
 
+// Routing lookups are cached in memory, so this only guards against a loop.
+export const routeLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 40,
+  standardHeaders: "draft-7",
+  legacyHeaders: false,
+  handler,
+});
+
 // Nominatim asks clients to keep lookups rare; the service also caches and
 // serialises them, so this only guards against a loop in a broken client.
 export const geocodeLimiter = rateLimit({

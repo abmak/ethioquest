@@ -80,6 +80,12 @@ export default {
       },
       backgroundImage: {
         "eth-band": "linear-gradient(90deg, #0f6b3a 0 33.3%, #e9b949 33.3% 66.6%, #c8102e 66.6% 100%)",
+        // Vivid marketing gradients: highland green → lake teal → sunset coral.
+        "vivid-sunset": "linear-gradient(120deg, #db2777 0%, #f97316 45%, #facc15 100%)",
+        "vivid-highland": "linear-gradient(120deg, #0f766e 0%, #16a34a 45%, #84cc16 100%)",
+        "vivid-royal": "linear-gradient(120deg, #4c1d95 0%, #7c3aed 40%, #db2777 100%)",
+        "vivid-lake": "linear-gradient(120deg, #0e7490 0%, #0ea5e9 50%, #22d3ee 100%)",
+        "vivid-gold": "linear-gradient(120deg, #b45309 0%, #f59e0b 50%, #fde68a 100%)",
       },
       keyframes: {
         "fade-in": {
@@ -95,11 +101,26 @@ export default {
           "70%": { transform: "scale(1.25)", opacity: "0" },
           "100%": { opacity: "0" },
         },
+        "float-slow": {
+          "0%, 100%": { transform: "translateY(0)" },
+          "50%": { transform: "translateY(-8px)" },
+        },
+        "pop-in": {
+          "0%": { opacity: "0", transform: "scale(0.92)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
+        "shimmer": {
+          "0%": { backgroundPosition: "0% 50%" },
+          "100%": { backgroundPosition: "200% 50%" },
+        },
       },
       animation: {
         "fade-in": "fade-in 0.25s ease-out both",
         "slide-up": "slide-up 0.35s cubic-bezier(0.22, 1, 0.36, 1) both",
         "pulse-ring": "pulse-ring 1.5s ease-out infinite",
+        "float-slow": "float-slow 7s ease-in-out infinite",
+        "pop-in": "pop-in 0.3s cubic-bezier(0.22, 1, 0.36, 1) both",
+        "shimmer": "shimmer 8s linear infinite",
       },
     },
   },

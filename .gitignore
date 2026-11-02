@@ -10,6 +10,12 @@ coverage/
 .env.*.local
 !.env.example
 
+# Local scratch: QA scripts, test payloads, downloaded fixtures and browser profiles
+.tmp/
+
+# Local environment backups (can contain secrets)
+backend/.env.bak*
+
 # Local PostgreSQL dev cluster + uploaded media
 .devdb/
 backend/uploads/*

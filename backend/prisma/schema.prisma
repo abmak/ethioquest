@@ -1,5 +1,10 @@
-// አዲስ ገበታ (Addis Gebeta) — PostgreSQL schema
-// Edit this file, then run `npm run db:migrate -- --name <change>`.
+// EthioQuest — PostgreSQL schema for the three-feature service:
+//   1. Let's Know Ethiopia  (quiz pool, attempts, leaderboards, prizes)
+//   2. Let's Travel          (Ethiopian destinations and preference matching)
+//   3. Share My Experience   (travel stories, likes and comments)
+//
+// The database is intentionally separate from the legacy Addis Gebeta schema.
+// Create/update it with `npm run db:migrate --workspace backend`.
 
 generator client {
   provider = "prisma-client-js"
@@ -10,141 +15,302 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum CategoryKind {
-  DISCUSSION
-  MOVIE
-  BOOK
-  HIKE
-}
-
-enum MediaKind {
+enum QuestionType {
+  CHOICE
+  TRUE_FALSE
+  MATCHING
   IMAGE
-  AUDIO
 }
 
-enum Difficulty {
-  EASY
-  MODERATE
-  HARD
-  EXPERT
+enum DestinationCategory {
+  HISTORY
+  HERITAGE
+  NATURE
+  WILDLIFE
+  ADVENTURE
+  CULTURE
+  CITY
+  FOOD
 }
 
-enum PlaceKind {
-  CINEMA
-  THEATRE
-  HOTEL
-  HIKING
-  CAFE
-  RESTAURANT
-  GYM
-  STADIUM
-  GALLERY
-  LIBRARY
-  HOSPITAL
-  PHARMACY
-  GAS_STATION
-  SCHOOL
-  PUBLIC_TOILET
-  PARKING
-  EV_CHARGING
-  TRANSIT_STOP
-  BANK
-  ATM
-}
-
-enum ReportTargetType {
-  POST
-  COMMENT
-  USER
-}
-
-enum ReportStatus {
-  OPEN
-  RESOLVED
-  DISMISSED
-}
-
-enum NotificationType {
-  POST_LIKE
-  COMMENT
-  REPLY
-  COMMENT_LIKE
-  FOLLOW
-  MESSAGE
-  ANNOUNCEMENT
-  MOVIE_REVIEW
-  BOOK_REVIEW
-  EVENT_REMINDER
-}
-
-enum VerificationType {
-  PHONE_VERIFICATION
-  PASSWORD_RESET
+enum PrizeStatus {
+  PENDING
+  PAID
+  VOID
 }
 
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
-  username           String    @unique
-  displayName        String
-  passwordHash       String
-  passwordChangedAt  DateTime?
-  bio                String?   @db.Text
-  avatarUrl          String?
-  coverUrl           String?
-  phone              String?   @unique
-  phoneVerifiedAt    DateTime?
-  // Slug of a RoleDefinition row. The three built-in slugs are USER, MODERATOR
-  // and ADMIN; administrators can add more from the dashboard.
-  role               String    @default("USER")
-  interests          String[]  @default([])
-  // "GREGORIAN" or "ETHIOPIAN": which calendar dates are shown in first.
-  calendarPreference String    @default("GREGORIAN")
-  showPresence       Boolean   @default(true)
-  lastSeenAt         DateTime?
-  banned             Boolean   @default(false)
-  suspendedAt        DateTime?
-  suspendedReason    String?   @db.Text
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id                String    @id @default(cuid())
+  email             String    @unique
+  username          String    @unique
+  displayName       String
+  passwordHash      String
+  passwordChangedAt DateTime?
+  bio               String?   @db.Text
+  avatarUrl         String?
+  region            String?
+  // USER | MODERATOR | ADMIN
+  role              String    @default("USER")
+  banned            Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
-  posts                 Post[]             @relation("PostAuthor")
-  comments              Comment[]
-  postLikes             PostLike[]
-  commentLikes          CommentLike[]
-  bookmarks             Bookmark[]
-  following             Follow[]           @relation("Follower")
-  followers             Follow[]           @relation("Following")
-  media                 Media[]
-  movieReviews          MovieReview[]
-  bookReviews           BookReview[]
-  messages              Message[]
-  conversationsAsFirst  Conversation[]     @relation("ConversationFirst")
-  conversationsAsSecond Conversation[]     @relation("ConversationSecond")
-  reportsFiled          Report[]           @relation("ReportReporter")
-  reportsResolved       Report[]           @relation("ReportResolver")
-  verificationCodes     VerificationCode[]
-  notifications         Notification[]      @relation("NotificationRecipient")
-  actorNotifications    Notification[]      @relation("NotificationActor")
-  pushSubscriptions     PushSubscription[]
-  eventsCreated         Event[]            @relation("EventCreator")
-  eventRsvps            EventRsvp[]
-  leaveByReminders      LeaveByReminder[]
-  tripShares            TripShare[]
-  adminActions          AdminAction[]      @relation("AdminActionActor")
-  quizAttempts          QuizAttempt[]
-  quizSeen              QuizSeen[]
-  placeQuizAttempts     PlaceQuizAttempt[]
-  pollVotes             PollVote[]
-  jokeSessionsCreated   JokeSession[]      @relation("JokeSessionCreator")
-  jokes                 Joke[]
-  jokeLikes             JokeLike[]
-  jokeComments          JokeComment[]
+  attempts           QuizAttempt[]
+  quizPayments       QuizPayment[]
+  experiences        ExperiencePost[]
+  experienceLikes    ExperienceLike[]
+  experienceComments ExperienceComment[]
+  prizes             PrizeAward[]
+  following          Follow[]        @relation("Follower")
+  followers          Follow[]        @relation("Following")
+  messagesSent       DirectMessage[] @relation("MessageSender")
+  messagesReceived   DirectMessage[] @relation("MessageRecipient")
 
   @@index([createdAt(sort: Desc)])
   @@index([role])
 }
 
+// ---------------------------------------------------------------------------
+// Let's Know Ethiopia
+// ---------------------------------------------------------------------------
+
+// A single pool holds all four question shapes. `correctIndex` is used by
+// CHOICE, TRUE_FALSE and IMAGE; MATCHING stores its left/right pairs in
+// `matchPairs` and the shuffled right-hand choices in `matchOptions`.
+model QuizQuestion {
+  id           String       @id @default(cuid())
+  key          String       @unique
+  type         QuestionType
+  prompt       String       @db.Text
+  category     String
+  difficulty   String       @default("MEDIUM")
+  explanation  String?      @db.Text
+  region       String?
+  // Image questions
+  imageUrl     String?      @db.Text
+  imageCredit  String?      @db.Text
+  imageLicense String?      @db.Text
+  // CHOICE / TRUE_FALSE / IMAGE
+  options      String[]     @default([])
+  correctIndex Int?
+  // MATCHING
+  matchPairs   Json?
+  matchOptions String[]     @default([])
+  // CURATED | GENERATED
+  source       String       @default("CURATED")
+  active       Boolean      @default(true)
+  createdAt    DateTime     @default(now())
+
+  @@index([type, active])
+  @@index([category, active])
+  @@index([active])
+}
+
+// One row per play. A member gets one free play per Ethiopian calendar day and
+// up to nine paid retries (3 ETB each), so `playIndex` runs 0..9 inside a day.
+// A row is created when the play starts and completed when they submit. Daily,
+// weekly and monthly leaderboards use each member's best completed play.
+model QuizAttempt {
+  id             String    @id @default(cuid())
+  userId         String
+  day            String
+  // 0 = the free daily play, 1..9 = paid retries.
+  playIndex      Int       @default(0)
+  paid           Boolean   @default(false)
+  weekKey        String
+  monthKey       String
+  questionIds    String[]
+  answers        Json      @default("[]")
+  score          Int       @default(0)
+  maxScore       Int       @default(100)
+  correctCount   Int       @default(0)
+  totalQuestions Int       @default(10)
+  durationMs     Int?
+  startedAt      DateTime  @default(now())
+  completedAt    DateTime?
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  payment QuizPayment?
+
+  @@unique([userId, day, playIndex])
+  @@index([day, score(sort: Desc), durationMs])
+  @@index([weekKey, score(sort: Desc), durationMs])
+  @@index([monthKey, score(sort: Desc), durationMs])
+  @@index([userId, completedAt(sort: Desc)])
+}
+
+// Record of a 3 ETB retry. Payment is confirmed manually by the member (cash or
+// mobile money) and logged here so staff can review it later; a row is always
+// created together with the paid attempt it unlocks.
+model QuizPayment {
+  id        String   @id @default(cuid())
+  userId    String
+  attemptId String   @unique
+  day       String
+  playIndex Int
+  amountEtb Int      @default(3)
+  // TELEBIRR | CBE_BIRR | CASH
+  method    String
+  reference String?
+  // CONFIRMED | VOID
+  status    String   @default("CONFIRMED")
+  createdAt DateTime @default(now())
+
+  user    User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  attempt QuizAttempt @relation(fields: [attemptId], references: [id], onDelete: Cascade)
+
+  @@index([day, createdAt(sort: Desc)])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+// Prize configuration: one row per winning rank in a period. Staff choose the
+// prize type, its optional photo and the amount, so the number of rows is the
+// number of winners for DAILY, WEEKLY or MONTHLY.
+model PrizeTier {
+  id          String   @id @default(cuid())
+  // DAILY | WEEKLY | MONTHLY
+  period      String
+  rank        Int
+  name        String   @db.Text
+  description String?  @db.Text
+  amountEtb   Int?
+  imageUrl    String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([period, rank])
+  @@index([period])
+}
+
+// A snapshot of a period's winners. Finalising locks the prizes that were
+// configured at that moment, so later play cannot change a paid result.
+model PrizeAward {
+  id          String      @id @default(cuid())
+  // DAILY | WEEKLY | MONTHLY
+  period      String      @default("MONTHLY")
+  // The period key: YYYY-MM-DD, YYYY-Www or YYYY-MM.
+  periodKey   String
+  rank        Int
+  userId      String
+  name        String      @db.Text
+  description String?     @db.Text
+  amountEtb   Int?
+  imageUrl    String?     @db.Text
+  status      PrizeStatus @default(PENDING)
+  note        String?
+  awardedAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([period, periodKey, rank])
+  @@index([period, periodKey])
+  @@index([userId])
+}
+
+// ---------------------------------------------------------------------------
+// Let's Travel
+// ---------------------------------------------------------------------------
+
+model Destination {
+  id           String              @id @default(cuid())
+  slug         String              @unique
+  name         String
+  region       String
+  city         String?
+  category     DestinationCategory
+  tagline      String
+  summary      String              @db.Text
+  description  String              @db.Text
+  highlights   String[]            @default([])
+  activities   String[]            @default([])
+  bestTime     String
+  gettingThere String              @db.Text
+  entryFee     String?
+  durationDays Int                 @default(2)
+  budgetLevel  Int                 @default(2)
+  lat          Float
+  lng          Float
+  imageUrl     String              @db.Text
+  // Attribution for the bundled Wikimedia Commons photo.
+  imageCredit  String?
+  gallery      String[]            @default([])
+  rating       Float               @default(0)
+  reviewCount  Int                 @default(0)
+  featured     Boolean             @default(false)
+  tags         String[]            @default([])
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+
+  experiences ExperiencePost[]
+
+  @@index([region, category])
+  @@index([featured])
+  @@index([budgetLevel])
+}
+
+// ---------------------------------------------------------------------------
+// Share My Travel Experience
+// ---------------------------------------------------------------------------
+
+model ExperiencePost {
+  id              String    @id @default(cuid())
+  authorId        String
+  title           String
+  body            String    @db.Text
+  destinationId   String?
+  destinationName String
+  region          String
+  rating          Int?
+  travelDate      DateTime?
+  imageUrls       String[]  @default([])
+  likeCount       Int       @default(0)
+  commentCount    Int       @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  deletedAt       DateTime?
+
+  author      User                @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  destination Destination?        @relation(fields: [destinationId], references: [id], onDelete: SetNull)
+  likes       ExperienceLike[]
+  comments    ExperienceComment[]
+
+  @@index([createdAt(sort: Desc)])
+  @@index([authorId, createdAt(sort: Desc)])
+  @@index([destinationId])
+}
+
+model ExperienceLike {
+  postId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  post ExperiencePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  user User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([postId, userId])
+  @@index([userId, createdAt(sort: Desc)])
+}
+
+model ExperienceComment {
+  id        String    @id @default(cuid())
+  postId    String
+  authorId  String
+  body      String    @db.Text
+  deletedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  post   ExperiencePost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([postId, createdAt])
+}
+
+// ---------------------------------------------------------------------------
+// Community: follows and direct messages
+// ---------------------------------------------------------------------------
+
+// One row per follow edge. `followerId` follows `followingId`.
 model Follow {
   followerId  String
   followingId String
@@ -157,820 +323,63 @@ model Follow {
   @@index([followingId, createdAt(sort: Desc)])
 }
 
-model Category {
-  id          String       @id @default(cuid())
-  slug        String       @unique
-  name        String       @unique
-  description String       @db.Text
-  icon        String       @default("MessageCircle")
-  color       String       @default("#0f766e")
-  kind        CategoryKind @default(DISCUSSION)
-  sortOrder   Int          @default(0)
-  createdAt   DateTime     @default(now())
+// A one-to-one conversation is derived from the two member ids, so every
+// message is stored once with its sender and recipient.
+model DirectMessage {
+  id          String    @id @default(cuid())
+  senderId    String
+  recipientId String
+  body        String    @db.Text
+  readAt      DateTime?
+  createdAt   DateTime  @default(now())
 
-  posts  Post[]
-  events Event[]
+  sender    User @relation("MessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  recipient User @relation("MessageRecipient", fields: [recipientId], references: [id], onDelete: Cascade)
 
-  @@index([sortOrder])
+  @@index([senderId, recipientId, createdAt(sort: Desc)])
+  @@index([recipientId, readAt])
 }
 
-model Post {
-  id            String   @id @default(cuid())
-  authorId      String
-  categoryId    String
-  title         String?
-  body          String   @db.Text
-  likeCount     Int      @default(0)
-  commentCount  Int      @default(0)
-  bookmarkCount Int      @default(0)
-  shareCount    Int      @default(0)
-  viewCount     Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  author        User           @relation("PostAuthor", fields: [authorId], references: [id], onDelete: Cascade)
-  category      Category       @relation(fields: [categoryId], references: [id])
-  media         Media[]
-  likes         PostLike[]
-  comments      Comment[]
-  bookmarks     Bookmark[]
-  movie         MovieDetail?
-  book          BookDetail?
-  hike          HikeDetail?
-  movieReviews  MovieReview[]
-  bookReviews   BookReview[]
-  notifications Notification[]
-  poll          Poll?
-
-  @@index([categoryId, createdAt(sort: Desc)])
-  @@index([authorId, createdAt(sort: Desc)])
-  @@index([createdAt(sort: Desc)])
-}
-
-// "Joke Time" runs in scheduled windows. While a session is open members share
-// jokes and react to each other; when it closes the day's top joke is ranked by
-// likes plus comments.
-model JokeSession {
-  id          String   @id @default(cuid())
-  title       String   @default("Joke Time")
-  opensAt     DateTime
-  closesAt    DateTime
-  createdAt   DateTime @default(now())
-  createdById String?
-
-  createdBy User?  @relation("JokeSessionCreator", fields: [createdById], references: [id], onDelete: SetNull)
-  jokes     Joke[]
-
-  @@index([opensAt, closesAt])
-}
-
-model Joke {
-  id           String   @id @default(cuid())
-  sessionId    String
-  authorId     String
-  body         String   @db.Text
-  likeCount    Int      @default(0)
-  commentCount Int      @default(0)
-  createdAt    DateTime @default(now())
-
-  session  JokeSession   @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  likes    JokeLike[]
-  comments JokeComment[]
-
-  @@index([sessionId, createdAt(sort: Desc)])
-}
-
-model JokeLike {
-  jokeId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  joke Joke @relation(fields: [jokeId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([jokeId, userId])
-}
-
-model JokeComment {
-  id        String    @id @default(cuid())
-  jokeId    String
-  authorId  String
-  body      String    @db.Text
-  deletedAt DateTime?
-  createdAt DateTime  @default(now())
-
-  joke   Joke @relation(fields: [jokeId], references: [id], onDelete: Cascade)
-  author User @relation(fields: [authorId], references: [id], onDelete: Cascade)
-
-  @@index([jokeId, createdAt])
-}
-
-// A poll attached to a post: room discussion or standalone question. Every
-// vote is a row (one per member per poll), and option counts are denormalised
-// so results and realtime broadcasts stay a single read.
-model Poll {
-  id            String    @id @default(cuid())
-  postId        String    @unique
-  question      String    @db.Text
-  allowMultiple Boolean   @default(false)
-  endsAt        DateTime?
-  createdAt     DateTime  @default(now())
-
-  post    Post         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  options PollOption[]
-  votes   PollVote[]
-
-  @@index([createdAt])
-}
-
-model PollOption {
-  id        String @id @default(cuid())
-  pollId    String
-  label     String
-  sortOrder Int    @default(0)
-  voteCount Int    @default(0)
-
-  poll  Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  votes PollVote[]
-
-  @@index([pollId, sortOrder])
-}
-
-model PollVote {
-  id        String   @id @default(cuid())
-  pollId    String
-  optionId  String
-  userId    String
-  createdAt DateTime @default(now())
-
-  poll   Poll       @relation(fields: [pollId], references: [id], onDelete: Cascade)
-  option PollOption @relation(fields: [optionId], references: [id], onDelete: Cascade)
-  user   User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([pollId, userId])
-  @@index([optionId])
-  @@index([userId])
-}
-
-model PostLike {
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([postId, userId])
-  @@index([userId, createdAt(sort: Desc)])
-}
-
-model Bookmark {
-  postId    String
-  userId    String
-  createdAt DateTime @default(now())
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([postId, userId])
-  @@index([userId, createdAt(sort: Desc)])
-}
-
-model Comment {
-  id         String    @id @default(cuid())
-  postId     String
-  authorId   String
-  parentId   String?
-  body       String    @db.Text
-  likeCount  Int       @default(0)
-  replyCount Int       @default(0)
-  deletedAt  DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-
-  post    Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
-  author  User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  parent  Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies Comment[]     @relation("CommentReplies")
-  likes   CommentLike[]
-
-  @@index([postId, createdAt])
-  @@index([parentId])
-}
-
-model CommentLike {
-  commentId String
-  userId    String
-  createdAt DateTime @default(now())
-
-  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@id([commentId, userId])
-}
-
-model Media {
-  id           String    @id @default(cuid())
-  ownerId      String
-  kind         MediaKind
-  url          String
-  thumbnailUrl String?
-  mimeType     String
-  sizeBytes    Int
-  width        Int?
-  height       Int?
-  durationMs   Int?
-  postId       String?
-  messageId    String?
-  createdAt    DateTime  @default(now())
-
-  owner   User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  post    Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
-  message Message? @relation(fields: [messageId], references: [id], onDelete: Cascade)
-
-  @@index([postId])
-  @@index([messageId])
-  @@index([ownerId, createdAt])
-}
-
-model MovieDetail {
-  id         String  @id @default(cuid())
-  postId     String  @unique
-  movieTitle String
-  director   String?
-  year       Int?
-  genre      String?
-  synopsis   String? @db.Text
-  trailerUrl String?
-  posterUrl  String?
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-}
-
-model MovieReview {
-  id        String   @id @default(cuid())
-  postId    String
-  userId    String
-  rating    Int
-  body      String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@index([postId, createdAt(sort: Desc)])
-}
-
-model BookDetail {
-  id        String  @id @default(cuid())
-  postId    String  @unique
-  bookTitle String
-  author    String?
-  genre     String?
-  synopsis  String? @db.Text
-  coverUrl  String?
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-}
-
-model BookReview {
-  id        String   @id @default(cuid())
-  postId    String
-  userId    String
-  rating    Int
-  body      String?  @db.Text
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([postId, userId])
-  @@index([postId, createdAt(sort: Desc)])
-}
-
-model HikeDetail {
-  id            String     @id @default(cuid())
-  postId        String     @unique
-  location      String
-  difficulty    Difficulty @default(MODERATE)
-  distanceKm    Float?
-  durationHours Float?
-  tips          String?    @db.Text
-
-  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
-}
-
-model Conversation {
-  id            String   @id @default(cuid())
-  user1Id       String
-  user2Id       String
-  lastMessageAt DateTime @default(now())
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  user1         User           @relation("ConversationFirst", fields: [user1Id], references: [id], onDelete: Cascade)
-  user2         User           @relation("ConversationSecond", fields: [user2Id], references: [id], onDelete: Cascade)
-  messages      Message[]
-  notifications Notification[]
-
-  @@unique([user1Id, user2Id])
-  @@index([user1Id, lastMessageAt(sort: Desc)])
-  @@index([user2Id, lastMessageAt(sort: Desc)])
-}
-
-model Message {
-  id             String    @id @default(cuid())
-  conversationId String
-  senderId       String
-  body           String?   @db.Text
-  replyToId      String?
-  editedAt       DateTime?
-  deletedAt      DateTime?
-  readAt         DateTime?
-  createdAt      DateTime  @default(now())
-
-  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sender       User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
-  replyTo      Message?     @relation("MessageReply", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies      Message[]    @relation("MessageReply")
-  media        Media[]
-
-  @@index([conversationId, createdAt(sort: Desc)])
-  @@index([conversationId, senderId, readAt])
-}
-
-model Notification {
-  id             String           @id @default(cuid())
-  userId         String
-  actorId        String?
-  type           NotificationType
-  body           String
-  // Where the notification should take the member. Feature-specific columns
-  // (postId, conversationId) stay for older clients; url is the general case.
-  url            String?
-  postId         String?
-  conversationId String?
-  readAt         DateTime?
-  createdAt      DateTime         @default(now())
-
-  user         User          @relation("NotificationRecipient", fields: [userId], references: [id], onDelete: Cascade)
-  actor        User?         @relation("NotificationActor", fields: [actorId], references: [id], onDelete: SetNull)
-  post         Post?         @relation(fields: [postId], references: [id], onDelete: Cascade)
-  conversation Conversation? @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([userId, readAt, createdAt(sort: Desc)])
-}
-
-// One row per browser/device that opted into Web Push. The endpoint is the
-// push service URL; p256dh and auth are the browser's encryption keys. A 404
-// or 410 from the push service means the subscription is gone and the row is
-// deleted on the next send.
-model PushSubscription {
-  id         String   @id @default(cuid())
-  userId     String
-  endpoint   String   @unique
-  p256dh     String
-  auth       String
-  userAgent  String?
-  createdAt  DateTime @default(now())
-  lastUsedAt DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-}
-
-// Server-owned configuration that must survive restarts. The VAPID key pair
-// is generated on first use and stored here unless the operator supplied a
-// pair through the environment.
+// Small key/value store for operator settings and one-off migration markers.
 model AppSetting {
   key       String   @id
-  value     String
+  value     String   @db.Text
   updatedAt DateTime @updatedAt
 }
 
-model Report {
-  id           String           @id @default(cuid())
-  reporterId   String
-  targetType   ReportTargetType
-  targetId     String
-  reason       String
-  details      String?          @db.Text
-  status       ReportStatus     @default(OPEN)
-  resolvedAt   DateTime?
-  resolvedById String?
-  createdAt    DateTime         @default(now())
+// ---------------------------------------------------------------------------
+// Staff access control and audit trail
+// ---------------------------------------------------------------------------
 
-  reporter   User  @relation("ReportReporter", fields: [reporterId], references: [id], onDelete: Cascade)
-  resolvedBy User? @relation("ReportResolver", fields: [resolvedById], references: [id], onDelete: SetNull)
-
-  @@index([status, createdAt(sort: Desc)])
-  @@index([targetType, targetId])
+// User.role stores Role.name. The three built-in roles are seeded and cannot be
+// deleted; administrators can add custom roles and tune every permission list
+// (the ADMIN role is kept with the full set so staff can never lock themselves
+// out).
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  label       String
+  description String?
+  permissions String[] @default([])
+  builtIn     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
 
-// Every consequential action taken from the admin dashboard. Kept append-only
-// so the team can answer "who changed this, and why?" long after the fact.
-model AdminAction {
+// Append-only staff activity trail. Actor values are snapshots, not relations,
+// so the record stays readable after an account is removed.
+model AuditLog {
   id         String   @id @default(cuid())
-  actorId    String
+  actorId    String?
+  actorName  String
   actorRole  String
   action     String
   targetType String
   targetId   String?
-  summary    String   @db.Text
-  metadata   Json?
+  detail     Json?
   createdAt  DateTime @default(now())
 
-  actor User @relation("AdminActionActor", fields: [actorId], references: [id], onDelete: Cascade)
-
   @@index([createdAt(sort: Desc)])
-  @@index([actorId, createdAt(sort: Desc)])
-  @@index([targetType, targetId])
-}
-
-// Real-world venues members can discover, rate and talk about: cinemas,
-// theatres, hotels, trailheads, cafés and restaurants.
-model Place {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  name        String
-  kind        PlaceKind
-  city        String
-  area        String?
-  address     String?
-  description String    @db.Text
-  lat         Float
-  lng         Float
-  rating      Float     @default(0)
-  reviewCount Int       @default(0)
-  priceLevel  Int?
-  tags        String[]  @default([])
-  highlight   String?
-  featured    Boolean   @default(false)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  events Event[]
-
-  @@index([kind, city])
-  @@index([city, rating(sort: Desc)])
-  @@index([featured])
-}
-
-model VerificationCode {
-  id         String           @id @default(cuid())
-  userId     String
-  phone      String
-  codeHash   String
-  type       VerificationType
-  expiresAt  DateTime
-  consumedAt DateTime?
-  attempts   Int              @default(0)
-  createdAt  DateTime         @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, type, createdAt(sort: Desc)])
-}
-
-enum RsvpStatus {
-  GOING
-  INTERESTED
-}
-
-/// A public, expiring live-location link created from in-app navigation.
-/// The traveler's browser posts fixes while navigation is running; a trusted
-/// contact opens `/trip/<token>` without signing in.
-enum TripShareStatus {
-  ACTIVE
-  ARRIVED
-  ENDED
-  EXPIRED
-}
-
-/// Two kinds of listing share one table: EVENTS are listings pulled in from an
-/// online source (cinema, theatre, football, concerts), MEETUPS are hosted by
-/// members. `kind` is what splits the Events page into its two tabs.
-enum EventKind {
-  EVENT
-  MEETUP
-}
-
-/// What kind of happening it is. The first seven predate the admin events
-/// desk; the rest are the kinds the community team publishes by hand — social
-/// meetups, travel and hiking outings, business conferences and seasonal
-/// celebrations. FESTIVAL is shown as "Music festival" in the UI.
-enum EventTopic {
-  CINEMA
-  THEATRE
-  SPORTS
-  MUSIC
-  FESTIVAL
-  COMMUNITY
-  SOCIAL
-  TRAVEL
-  HIKING
-  BUSINESS
-  SEASONAL
-  OTHER
-}
-
-/// How an event source is fetched: a sports fixture API, a public Telegram
-/// channel preview page, or an RSS/Atom feed.
-enum EventSourceAdapter {
-  SPORTS_API
-  TELEGRAM
-  RSS
-  GEMINI
-}
-
-// Community meetups, watch parties, hikes, and group gatherings
-model Event {
-  id           String      @id @default(cuid())
-  slug         String      @unique
-  title        String
-  description  String      @db.Text
-  coverUrl     String?
-  startDate    DateTime
-  endDate      DateTime?
-  location     String?
-  lat          Float?
-  lng          Float?
-  placeId      String?
-  place        Place?      @relation(fields: [placeId], references: [id], onDelete: SetNull)
-  categoryId   String?
-  category     Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  creatorId    String
-  creator      User        @relation("EventCreator", fields: [creatorId], references: [id], onDelete: Cascade)
-  maxAttendees Int?
-  rsvps        EventRsvp[]
-  leaveByReminders LeaveByReminder[]
-  kind         EventKind   @default(MEETUP)
-  topic        EventTopic  @default(COMMUNITY)
-  // The competition a fixture belongs to ("English Premier League"), so the
-  // sports page can group fixtures without parsing the description.
-  competition  String?
-  // Club crests for the two sides, so the schedule reads like a fixture list.
-  homeLogo     String?
-  awayLogo     String?
-  sourceId     String?
-  source       EventSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
-  externalId   String?
-  sourceUrl    String?
-  importedAt   DateTime?
-  // Gemini wrote this listing's copy. A later regex-only sync must not
-  // overwrite it with the raw post text.
-  aiExtracted  Boolean     @default(false)
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-
-  @@unique([sourceId, externalId])
-  @@index([kind, startDate])
-  @@index([startDate])
-  @@index([competition, startDate])
-  @@index([categoryId])
-  @@index([placeId])
-  @@index([creatorId])
-}
-
-// One row per online feed that automatic event import reads. Admins add rows
-// here (sports league, Telegram channel, RSS feed) and can sync on demand.
-model EventSource {
-  id           String             @id @default(cuid())
-  key          String             @unique
-  name         String
-  adapter      EventSourceAdapter
-  topic        EventTopic         @default(OTHER)
-  config       Json               @default("{}")
-  enabled      Boolean            @default(true)
-  lastSyncAt   DateTime?
-  lastStatus   String?
-  lastError    String?
-  lastImported Int                @default(0)
-  createdAt    DateTime           @default(now())
-  updatedAt    DateTime           @updatedAt
-
-  events Event[]
-
-  @@index([enabled])
-}
-
-// One row per Gemini key in the pool: how often it was used, how often it hit
-// its quota, and how long we should leave it alone. Written by lib/ai/gemini.ts
-// and read by the admin event-sources page.
-model AiKeyUsage {
-  id            String    @id @default(cuid())
-  keyIndex      Int       @unique
-  maskedKey     String
-  requests      Int       @default(0)
-  successes     Int       @default(0)
-  rateLimited   Int       @default(0)
-  failures      Int       @default(0)
-  tokens        Int       @default(0)
-  lastUsedAt    DateTime?
-  lastStatus    String?
-  lastError     String?   @db.Text
-  cooldownUntil DateTime?
-  // Model name -> ISO time until which that model is capped for this key.
-  // Survives restarts so a spent quota is not retried after every boot.
-  cooldowns     Json      @default("{}")
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  @@index([lastUsedAt])
-}
-
-// A member's own departure plan for one event: the origin they shared, the
-// travel time the router found, and when to nudge them. One row per member per
-// event, replaced when they recalculate.
-model LeaveByReminder {
-  id             String   @id @default(cuid())
-  userId         String
-  eventId        String
-  originLat      Float
-  originLng      Float
-  originLabel    String?
-  mode           String   @default("driving")
-  leaveAt        DateTime
-  notifyAt       DateTime
-  travelSeconds  Int
-  distanceMeters Int
-  notifiedAt     DateTime?
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
-
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, eventId])
-  @@index([notifyAt, notifiedAt])
-}
-
-/// One live trip link. The token is the secret in the URL; the route geometry
-/// is stored so the public page can draw the planned road even before the first
-/// GPS fix arrives. Only the owner can update or end a share.
-model TripShare {
-  id                   String          @id @default(cuid())
-  token                String          @unique
-  userId               String
-  originName           String?
-  originLat            Float
-  originLng            Float
-  destinationName      String
-  destinationAddress   String?
-  destinationLat       Float
-  destinationLng       Float
-  mode                 String          @default("driving")
-  routePath            Json?
-  routeDistanceMeters  Int?
-  routeDurationSeconds Int?
-  status               TripShareStatus @default(ACTIVE)
-  currentLat           Float?
-  currentLng           Float?
-  accuracyMeters       Float?
-  headingDegrees       Float?
-  lastFixAt            DateTime?
-  remainingMeters      Int?
-  remainingSeconds     Int?
-  delayMinutes         Int             @default(0)
-  note                 String?         @db.VarChar(200)
-  arrivedAt            DateTime?
-  endedAt              DateTime?
-  expiresAt            DateTime
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@index([userId, status])
-  @@index([expiresAt])
-}
-
-model EventRsvp {
-  id        String     @id @default(cuid())
-  eventId   String
-  userId    String
-  status    RsvpStatus @default(GOING)
-  createdAt DateTime   @default(now())
-
-  event Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([eventId, userId])
-  @@index([eventId, status])
-  @@index([userId])
-}
-
-// Editable role definitions. Permissions are capability ids from
-// server/src/lib/rbac.ts; the three built-in roles are seeded on boot and can
-// have their capabilities changed, but cannot be deleted.
-model RoleDefinition {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  name        String   @unique
-  description String   @default("") @db.Text
-  permissions String[] @default([])
-  rank        Int      @default(10)
-  system      Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@index([rank])
-}
-
-// "Let's Know Ethiopia" question pool.
-model QuizQuestion {
-  id           String   @id @default(cuid())
-  key          String   @unique
-  prompt       String   @db.Text
-  options      String[]
-  correctIndex Int
-  explanation  String?  @db.Text
-  category     String
-  difficulty   String   @default("MEDIUM")
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-
-  seenBy QuizSeen[]
-
-  @@index([category, active])
-}
-
-// One attempt per member per Ethiopian calendar day (Africa/Addis_Ababa).
-model QuizAttempt {
-  id          String    @id @default(cuid())
-  userId      String
-  day         String
-  questionIds String[]
-  answers     Int[]     @default([])
-  score       Int?
-  durationMs  Int?
-  startedAt   DateTime  @default(now())
-  expiresAt   DateTime
-  completedAt DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, day])
-  @@index([day, score(sort: Desc), durationMs])
-  @@index([userId, completedAt(sort: Desc)])
-}
-
-// Questions a member has already been served, so the daily ten stay fresh.
-model QuizSeen {
-  userId     String
-  questionId String
-  seenAt     DateTime @default(now())
-
-  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
-
-  @@id([userId, questionId])
-  @@index([userId, seenAt(sort: Desc)])
-}
-
-// "Guess the Place" picture pool: Ethiopian heritage sites, landscapes and
-// cultural treasures, each with a freely licensed Wikimedia Commons photo.
-model PlaceQuizQuestion {
-  id           String   @id @default(cuid())
-  key          String   @unique
-  prompt       String   @db.Text
-  imageUrl     String   @db.Text
-  imageCredit  String   @default("")
-  imageLicense String   @default("")
-  imagePageUrl String?  @db.Text
-  answer       String
-  options      String[]
-  correctIndex Int
-  explanation  String?  @db.Text
-  category     String
-  region       String   @default("")
-  kind         String   @default("PLACE")
-  active       Boolean  @default(true)
-  createdAt    DateTime @default(now())
-
-  @@index([category, active])
-}
-
-// One picture-quiz attempt per member per Ethiopian calendar day.
-model PlaceQuizAttempt {
-  id          String    @id @default(cuid())
-  userId      String
-  day         String
-  questionIds String[]
-  answers     Int[]     @default([])
-  score       Int?
-  durationMs  Int?
-  startedAt   DateTime  @default(now())
-  completedAt DateTime?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, day])
-  @@index([day, score(sort: Desc), durationMs])
-  @@index([userId, completedAt(sort: Desc)])
+  @@index([actorId])
+  @@index([action])
 }

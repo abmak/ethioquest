@@ -1,0 +1,271 @@
+import type { DestinationSeed } from "./types";
+
+/** Cities and urban attractions: Addis Ababa and Ethiopia's regional towns. */
+export const cities: DestinationSeed[] = [
+  {
+    slug: "entoto-mountain",
+    name: "Entoto Mountain",
+    region: "Addis Ababa",
+    city: "Addis Ababa",
+    category: "NATURE",
+    tagline: "Eucalyptus highlands and panoramic views above the capital",
+    summary:
+      "The forested ridge north of Addis Ababa where Emperor Menelik II founded his capital, now a green escape with trails and sweeping city views.",
+    description:
+      "Entoto rises to about 3,000 metres above Addis Ababa and is covered in eucalyptus planted more than a century ago. The ridge holds the small Entoto St Maryam church, the ruins of Menelik II's palace and the old imperial compound, all reachable on foot from the upper city. Entoto Park, opened in 2020, adds marked walking and cycling trails, zip lines, playgrounds and cafés built from local stone and timber. The air is noticeably cooler than the city, and the view south over Addis at sunset is the classic capital postcard. Bring a light jacket, water and comfortable shoes; the paths are steep in places.",
+    highlights: [
+      "Panoramic sunset views over Addis Ababa",
+      "Entoto Park trails, zip line and café terraces",
+      "Entoto St Maryam church and imperial palace ruins",
+      "Cool eucalyptus forest at 3,000 metres",
+    ],
+    activities: [
+      "Hike or cycle the Entoto trails",
+      "Visit the church and Menelik II palace ruins",
+      "Picnic at Entoto Park",
+      "Photograph the city from the ridge",
+    ],
+    bestTime: "October to May, the dry season",
+    gettingThere:
+      "Take a ride-hailing car or taxi 25–40 minutes from the city centre, or a Piassa minibus towards Entoto and walk the last stretch.",
+    entryFee: "Free to the mountain; Entoto Park charges about ETB 100",
+    durationDays: 1,
+    budgetLevel: 1,
+    lat: 9.0833,
+    lng: 38.7667,
+    tags: ["hiking", "views", "forest", "addis ababa"],
+  },
+  {
+    slug: "national-museum-ethiopia",
+    name: "National Museum of Ethiopia",
+    region: "Addis Ababa",
+    city: "Addis Ababa",
+    category: "HISTORY",
+    tagline: "Home of Lucy and three million years of Ethiopian history",
+    summary:
+      "Ethiopia's principal museum, where the 3.2-million-year-old Lucy fossil and the country's greatest archaeological and artistic treasures are displayed.",
+    description:
+      "The National Museum sits near Arat Kilo in a building that once served the imperial government. Its ground-floor gallery holds the palaeontology collection, including the original Lucy (Dinkinesh) skeleton alongside a cast for visitors, the older Selam fossil and stone tools that trace human origins in the Rift Valley. Upper floors cover imperial history, traditional costumes, musical instruments, religious art and the works of modern Ethiopian painters. The displays are old-fashioned and the labels brief, so a guide adds a great deal. Allow two hours, go on a weekday morning when school groups are fewer, and combine the visit with the nearby Ethnological Museum at the former palace.",
+    highlights: [
+      "The 3.2-million-year-old Lucy fossil",
+      "Selam, the child hominid skeleton",
+      "Imperial and religious art collections",
+      "Traditional music and costume galleries",
+    ],
+    activities: [
+      "See the hominid fossil gallery",
+      "Tour the imperial history floor",
+      "Join a guided museum walk",
+      "Visit the Ethnological Museum nearby",
+    ],
+    bestTime: "Year-round, weekday mornings are quietest",
+    gettingThere:
+      "Walk or take a short ride from Arat Kilo; it is about 10 minutes on foot from the National Theatre and 15 from Piassa.",
+    entryFee: "About ETB 100 for foreign adults",
+    durationDays: 1,
+    budgetLevel: 1,
+    lat: 9.0183,
+    lng: 38.7636,
+    featured: true,
+    tags: ["museum", "lucy", "archaeology", "addis ababa"],
+  },
+  {
+    slug: "unity-park",
+    name: "Unity Park",
+    region: "Addis Ababa",
+    city: "Addis Ababa",
+    category: "CITY",
+    tagline: "A royal palace compound opened as a green city park",
+    summary:
+      "Twenty hectares of gardens, palaces and a small zoo inside the Grand Palace compound, opened to the public in 2019.",
+    description:
+      "Unity Park occupies the historic imperial compound in the heart of Addis Ababa, a walled estate used by Emperor Menelik II and later Haile Selassie. Restored buildings include Menelik's banqueting hall, the emperor's bedroom and the throne room, displayed with original furniture, portraits and ceremonial objects. The grounds hold more than 80 species of trees, a rose garden, a small zoo with endemic animals such as the Ethiopian wolf and Gelada baboon, and cafés set among lawns. Entry is by timed ticket through the main gate, and bags are screened. It is an easy, shaded half-day that suits families and pairs well with the National Museum and the nearby Churchill Avenue.",
+    highlights: [
+      "Restored Menelik II and Haile Selassie palaces",
+      "Rose gardens and 80+ tree species",
+      "Small zoo with Ethiopian wolves and Geladas",
+      "Throne room and imperial artefacts",
+    ],
+    activities: [
+      "Tour the imperial buildings",
+      "Walk the gardens and rose terraces",
+      "Visit the endemic animal enclosures",
+      "Coffee at the park café",
+    ],
+    bestTime: "October to April, mornings",
+    gettingThere:
+      "Enter from the Grand Palace gate off Menelik II Avenue; it is a 10-minute walk from Arat Kilo or a short taxi from Piassa.",
+    entryFee: "Tickets from about ETB 200; bring photo ID",
+    durationDays: 1,
+    budgetLevel: 2,
+    lat: 9.02,
+    lng: 38.758,
+    featured: true,
+    tags: ["park", "palace", "family", "addis ababa"],
+  },
+  {
+    slug: "merkato",
+    name: "Merkato",
+    region: "Addis Ababa",
+    city: "Addis Ababa",
+    category: "CITY",
+    tagline: "Africa's largest open-air market, a city within the city",
+    summary:
+      "A vast, sprawling market where spices, coffee, textiles, jewellery and second-hand goods are traded in thousands of stalls.",
+    description:
+      "Merkato covers a whole quarter west of the centre and is widely described as the largest open-air market in Africa. Its alleys specialise: the spice section sells berbere, korerima and mitmita by the sack; the coffee stalls roast and grind on the spot; the jewellery and silver shops cluster near the Grand Mosque; and the second-hand clothing lanes are a world of their own. It is loud, crowded and not a place for a leisurely stroll with a camera out. Go with a local guide, keep bags zipped and in front of you, agree prices before buying, and carry small notes. A morning visit of two hours is plenty for most travellers.",
+    highlights: [
+      "Spice alleys stacked with berbere and mitmita",
+      "Freshly roasted Ethiopian coffee stalls",
+      "Silver and jewellery quarter",
+      "Enormous second-hand clothing market",
+    ],
+    activities: [
+      "Guided market walk",
+      "Buy spices and coffee direct",
+      "Bargain for textiles and baskets",
+      "Lunch at a local fasting restaurant",
+    ],
+    bestTime: "Weekday mornings, before the midday crush",
+    gettingThere:
+      "Take a taxi or ride-hailing car to the Merkato entrance near the Grand Mosque; it is about 15 minutes from Piassa.",
+    entryFee: "Free",
+    durationDays: 1,
+    budgetLevel: 1,
+    lat: 9.0333,
+    lng: 38.7333,
+    tags: ["market", "shopping", "spices", "addis ababa"],
+  },
+  {
+    slug: "dire-dawa",
+    name: "Dire Dawa",
+    region: "Dire Dawa",
+    city: "Dire Dawa",
+    category: "CITY",
+    tagline: "Railway-town elegance and a lively eastern market",
+    summary:
+      "Ethiopia's second city, shaped by the old Franco-Ethiopian railway, with a leafy colonial grid and one of the country's best markets.",
+    description:
+      "Dire Dawa grew around the Franco-Ethiopian railway that reached the town in 1902, and the old station with its clock tower still anchors the Kezira district. The streets here follow a French-style grid, lined with mango trees, villas and arcades that feel distinct from Addis Ababa. The Taiwan Market and the surrounding lanes sell produce, incense, textiles and the flat breads of the east, while the Dechatu riverbed hosts a famous camel and livestock market on the edge of town. The climate is hot and dry; plan sightseeing for early morning and late afternoon, and use the town as a base for the rock art and canyons of the surrounding East Hararghe countryside.",
+    highlights: [
+      "The 1902 Franco-Ethiopian railway station",
+      "Kezira's leafy colonial street grid",
+      "Taiwan Market and spice lanes",
+      "Dechatu riverbed camel market",
+    ],
+    activities: [
+      "Walk the Kezira heritage streets",
+      "Shop the Taiwan Market",
+      "Visit the railway station museum",
+      "Day trip to the surrounding canyons",
+    ],
+    bestTime: "October to March, cooler and dry",
+    gettingThere:
+      "Fly about 1 hour from Addis Ababa, take the modern railway (roughly 8 hours) or drive 8–9 hours via Awash.",
+    entryFee: "Free",
+    durationDays: 2,
+    budgetLevel: 1,
+    lat: 9.5931,
+    lng: 41.8661,
+    tags: ["railway", "market", "heritage", "east"],
+  },
+  {
+    slug: "bishoftu",
+    name: "Bishoftu",
+    region: "Oromia",
+    city: "Bishoftu",
+    category: "CITY",
+    tagline: "Crater lakes and weekend resorts an hour from the capital",
+    summary:
+      "A small town set among volcanic crater lakes, long the favourite weekend escape for Addis Ababa families.",
+    description:
+      "Bishoftu, formerly Debre Zeit, sits on the edge of the Rift Valley about 47 kilometres southeast of Addis Ababa. Its string of crater lakes — Hora, Babogaya, Cheleklaka, Bishoftu and Green Lake — were formed by volcanic explosions and are ringed by resorts, bird-filled reed beds and steep forested rims. Lake Hora is the easiest to reach and has a walking circuit; Lake Babogaya is quieter and better for swimming. The town itself is relaxed, with coffee shops and fish restaurants serving fresh tilapia. Weekends are busy with Addis day-trippers, so book a lakeside table or room ahead. The cooler altitude and calm water make it an easy, restorative stop.",
+    highlights: [
+      "Lake Hora walking circuit",
+      "Quiet swimming at Lake Babogaya",
+      "Birdlife along the crater rims",
+      "Fresh tilapia at lakeside restaurants",
+    ],
+    activities: [
+      "Walk around Lake Hora",
+      "Swim or boat on the crater lakes",
+      "Birdwatching at dawn",
+      "Lunch at a lakeside resort",
+    ],
+    bestTime: "October to April",
+    gettingThere:
+      "Drive or take a minibus from Addis Ababa, about 1 hour on the Adama road; the lakes are a short taxi ride from town.",
+    entryFee: "Free town access; lake resorts charge day fees from ETB 200",
+    durationDays: 1,
+    budgetLevel: 1,
+    lat: 8.75,
+    lng: 38.9833,
+    tags: ["lakes", "weekend", "resorts", "birdwatching"],
+  },
+  {
+    slug: "arba-minch",
+    name: "Arba Minch",
+    region: "South Ethiopia",
+    city: "Arba Minch",
+    category: "CITY",
+    tagline: "Forty springs between two Rift Valley lakes",
+    summary:
+      "A green southern town perched above Lakes Abaya and Chamo, and the gateway to Nechisar National Park.",
+    description:
+      "Arba Minch means 'forty springs', after the water that rises below the town and feeds its banana and mango plantations. The town spreads across a ridge between Lake Abaya, red with silt, and Lake Chamo, blue and crocodile-filled, giving viewpoints that are among the best in the Rift Valley. The Forty Springs forest is a shaded walk with pools and birdlife, and the Crocodile Market on Lake Chamo is a boat trip to see large Nile crocodiles and hippos. Arba Minch is also the natural base for Nechisar National Park and for the Dorze and Konso villages nearby. Allow two nights to see the lakes and the park without rushing.",
+    highlights: [
+      "Views over Lakes Abaya and Chamo",
+      "Crocodile Market boat trip on Lake Chamo",
+      "Forty Springs forest walk",
+      "Gateway to Nechisar National Park",
+    ],
+    activities: [
+      "Boat trip to the crocodile market",
+      "Walk the Forty Springs trail",
+      "Game drive in Nechisar",
+      "Visit a Dorze village",
+    ],
+    bestTime: "October to March, after the rains",
+    gettingThere:
+      "Fly about 1 hour from Addis Ababa to Arba Minch, or drive 6–7 hours via Hawassa and Alaba.",
+    entryFee: "Free; boat trips and park fees are separate",
+    durationDays: 2,
+    budgetLevel: 2,
+    lat: 6.0333,
+    lng: 37.55,
+    tags: ["lakes", "crocodiles", "rift valley", "gateway"],
+  },
+  {
+    slug: "halala-kella",
+    name: "Halala Kella",
+    region: "Sidama",
+    city: "Hawassa",
+    category: "CULTURE",
+    tagline: "Thermal springs and a traditional Sidama spa retreat",
+    summary:
+      "A hot-spring spa in the Sidama hills near Hawassa, where warm mineral water and a slow rural setting draw weekend visitors.",
+    description:
+      "Halala Kella lies in the green Sidama countryside a short drive from Hawassa, built around natural hot springs that emerge warm from the volcanic rock. The retreat pairs pools of mineral water with simple bungalows, massage rooms and a restaurant serving Sidama coffee and local dishes. It is a low-key, distinctly Ethiopian spa experience rather than an international resort: expect tiled pools, steam rooms and a pace that encourages long soaks. The surrounding area is farmland and forest, good for a short walk and for seeing how coffee, enset and fruit are grown. Combine a visit with Lake Hawassa and the fish market, and bring your own towel.",
+    highlights: [
+      "Natural warm mineral spring pools",
+      "Traditional massage and steam rooms",
+      "Sidama coffee and local cuisine",
+      "Green farmland walks",
+    ],
+    activities: [
+      "Soak in the thermal pools",
+      "Book a traditional massage",
+      "Walk the surrounding farmland",
+      "Coffee ceremony at the retreat",
+    ],
+    bestTime: "October to March",
+    gettingThere:
+      "Drive about 30–40 minutes from Hawassa; taxis and ride-hailing cars can be hired for the round trip.",
+    entryFee: "Day use from about ETB 300",
+    durationDays: 1,
+    budgetLevel: 2,
+    lat: 7.06,
+    lng: 38.46,
+    tags: ["hot springs", "spa", "sidama", "relaxation"],
+  },
+];

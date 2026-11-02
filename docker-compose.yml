@@ -1,19 +1,19 @@
-name: community-hub
+name: ethioquest
 
 services:
   db:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: communityhub
-      POSTGRES_PASSWORD: communityhub
-      POSTGRES_DB: communityhub
+      POSTGRES_USER: ethioquest
+      POSTGRES_PASSWORD: ethioquest
+      POSTGRES_DB: ethioquest
     ports:
-      - "5434:5432"
+      - "5435:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ethioquest-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U communityhub -d communityhub"]
+      test: ["CMD-SHELL", "pg_isready -U ethioquest -d ethioquest"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -29,20 +29,13 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4000"
-      DATABASE_URL: postgresql://communityhub:communityhub@db:5432/communityhub?schema=public
+      DATABASE_URL: postgresql://ethioquest:ethioquest@db:5432/ethioquest?schema=public
       JWT_SECRET: ${JWT_SECRET:-change-me-in-production-use-a-48-byte-random-hex-string}
       CLIENT_ORIGIN: ${CLIENT_ORIGIN:-http://localhost:8080}
       CORS_EXTRA_ORIGINS: ${CORS_EXTRA_ORIGINS:-}
       PUBLIC_API_URL: ${PUBLIC_API_URL:-}
       UPLOAD_DIR: ./uploads
-      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-25}
-      SMS_PROVIDER: ${SMS_PROVIDER:-console}
-      SMS_FROM: ${SMS_FROM:-CommunityHub}
-      KNOCK_API_KEY: ${KNOCK_API_KEY:-}
-      KNOCK_SMS_WORKFLOW: ${KNOCK_SMS_WORKFLOW:-phone-verification}
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
-      TWILIO_FROM: ${TWILIO_FROM:-}
+      MAX_UPLOAD_MB: ${MAX_UPLOAD_MB:-15}
     volumes:
       - uploads:/app/backend/uploads
 
@@ -57,5 +50,5 @@ services:
       - "${WEB_PORT:-8080}:80"
 
 volumes:
-  postgres-data:
+  ethioquest-data:
   uploads:

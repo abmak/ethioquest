@@ -1,276 +1,222 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
-import {
-  BrowserRouter,
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
+import { useEffect, useState, type ReactNode } from "react";
+import { BrowserRouter, Link, NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
+import { Brain, Compass, LayoutDashboard, LogOut, MessageCircle, Sparkles, Users } from "lucide-react";
+import { BrandLockup } from "./components/Brand";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { LanguageSwitcher } from "./components/LanguageSwitcher";
+import { PageLoader } from "./components/ui";
 import { useAuth } from "./store/auth";
 import { useI18n } from "./store/i18n";
-import { useUI } from "./store/ui";
-import { listenForPushMessages, syncPushSubscription } from "./lib/browserNotifications";
-import { AppLayout, ThemeManager } from "./components/Layout";
-import { ErrorBoundary } from "./components/ErrorBoundary";
-import { ToastViewport } from "./components/ToastViewport";
-import { Spinner } from "./components/ui";
-import { BrandMark, Wordmark } from "./components/Brand";
-import { LandingPage } from "./pages/Landing";
-import { LoginPage, RegisterPage } from "./pages/AuthPages";
-import { HomePage } from "./pages/Home";
-import { CategoriesPage } from "./pages/Categories";
-import { CategoryPage } from "./pages/CategoryPage";
-import { PostDetailPage } from "./pages/PostDetail";
-import { CreatePostPage } from "./pages/CreatePost";
-import { EditPostPage } from "./pages/EditPost";
-import { CinemaPage, BooksPage, HikingPage } from "./pages/Collections";
-import { MovieDetailPage, BookDetailPage, HikeDetailPage } from "./pages/ReviewDetails";
-import { ProfilePage } from "./pages/Profile";
-import { FollowListPage } from "./pages/FollowList";
-import { MessagesPage, ConversationPage } from "./pages/Messages";
-import { NotificationsPage } from "./pages/Notifications";
-import { ExplorePage } from "./pages/Explore";
-import { PlacesPage } from "./pages/Places";
-import { PlaceDetailPage } from "./pages/PlaceDetail";
-import { EventsPage } from "./pages/Events";
-import { EventDetailPage } from "./pages/EventDetail";
-import { SportsPage } from "./pages/Sports";
-import { TravelPage } from "./pages/Travel";
+import { api } from "./lib/api";
+import { tt } from "./lib/i18n";
+import { cn, initials } from "./lib/utils";
+import { AuthPage } from "./pages/Auth";
 import { QuizPage } from "./pages/Quiz";
-import { JokesPage } from "./pages/Jokes";
-import { SearchPage } from "./pages/Search";
-import { BookmarksPage } from "./pages/Bookmarks";
-import { SettingsPage } from "./pages/Settings";
-import { AdminLayout } from "./pages/admin/AdminLayout";
-import { AdminOverview } from "./pages/admin/AdminOverview";
-import { AdminReports } from "./pages/admin/AdminReports";
-import { AdminMembers } from "./pages/admin/AdminMembers";
-import { AdminContent } from "./pages/admin/AdminContent";
-import { AdminRoles } from "./pages/admin/AdminRoles";
-import { AdminAudit } from "./pages/admin/AdminAudit";
-import { AdminCategories } from "./pages/admin/AdminCategories";
-import { AdminAnnouncements } from "./pages/admin/AdminAnnouncements";
-import { AdminJokes } from "./pages/admin/AdminJokes";
-import { AdminEvents } from "./pages/admin/AdminEvents";
-import { AdminEventSources } from "./pages/admin/AdminEventSources";
-import { NotFound } from "./pages/NotFound";
-
-const LazyNavigatePage = lazy(() =>
-  import("./pages/Navigate").then((module) => ({ default: module.NavigatePage })),
-);
-
-const LazyTripSharePage = lazy(() =>
-  import("./pages/TripShare").then((module) => ({ default: module.TripSharePage })),
-);
-
-function requireAuthNode(children: ReactNode) {
-  return <RequireAuth>{children}</RequireAuth>;
-}
+import { TravelPage, DestinationPage } from "./pages/Travel";
+import { ExperiencesPage, ExperienceDetailPage, NewExperiencePage } from "./pages/Experiences";
+import { AdminPage } from "./pages/Admin";
+import { MessagesPage, PeoplePage, ProfilePage } from "./pages/Social";
+import { TermsPage } from "./pages/Terms";
 
 function RequireAuth({ children }: { children: ReactNode }) {
-  const user = useAuth((state) => state.user);
-  const status = useAuth((state) => state.status);
+  const { user, status } = useAuth();
   const location = useLocation();
-
-  if (status !== "ready") {
-    return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Spinner className="h-7 w-7" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace state={{ from: `${location.pathname}${location.search}` }} />;
-  }
-
+  if (status !== "ready") return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <>{children}</>;
 }
 
-function ScrollToTop() {
-  const location = useLocation();
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "instant" });
-  }, [location.pathname]);
-
-  return null;
+/**
+ * Any role whose permission list is non-empty may open the console; the API
+ * still checks each capability, and the console hides the tabs it lacks.
+ */
+function isStaff(user: { role: string; permissions?: string[] } | null): boolean {
+  if (!user) return false;
+  if (user.permissions) return user.permissions.length > 0;
+  return user.role === "ADMIN" || user.role === "MODERATOR";
 }
 
-function Splash() {
+function RequireAdmin({ children }: { children: ReactNode }) {
+  const { user, status } = useAuth();
+  if (status !== "ready") return <PageLoader />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isStaff(user)) return <Navigate to="/quiz" replace />;
+  return <>{children}</>;
+}
+
+const TABS = [
+  { to: "/quiz", label: "Know Ethiopia", icon: Brain, tint: "from-fuchsia-600 to-orange-500" },
+  { to: "/travel", label: "Places to Visit", icon: Compass, tint: "from-teal-600 to-lime-500" },
+  { to: "/experiences", label: "Share", icon: Sparkles, tint: "from-rose-500 to-amber-400" },
+  { to: "/messages", label: "Messages", icon: MessageCircle, tint: "from-violet-600 to-sky-500" },
+  { to: "/people", label: "People", icon: Users, tint: "from-amber-500 to-rose-500" },
+] as const;
+
+function AppChrome({ children }: { children: ReactNode }) {
+  const { user, logout } = useAuth();
+  const isAdmin = isStaff(user);
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    const load = () =>
+      api
+        .get<{ count: number }>("/api/social/messages/unread")
+        .then((res) => {
+          if (active) setUnread(res.data.count);
+        })
+        .catch(() => undefined);
+    void load();
+    const timer = window.setInterval(load, 30000);
+    return () => {
+      active = false;
+      window.clearInterval(timer);
+    };
+  }, [user]);
+
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas">
-      <BrandMark className="h-14 w-14" glow />
-      <Wordmark />
-      <Spinner className="h-5 w-5" />
+    <div className="flex min-h-dvh flex-col bg-canvas text-ink">
+      <header className="sticky top-0 z-30 border-b border-line bg-surface/85 shadow-sm backdrop-blur-md">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
+          <Link to="/quiz" className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500" aria-label="Ethio Quest home">
+            <BrandLockup size="md" />
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <LanguageSwitcher />
+            {isAdmin && (
+              <Link
+                to="/admin"
+                className="hidden h-9 items-center gap-1.5 rounded-xl border border-violet-300/60 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 sm:inline-flex dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200"
+                aria-label="Admin dashboard"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+                Admin
+              </Link>
+            )}
+            {user && (
+              <Link
+                to="/people"
+                className="avatar-ring hidden rounded-full sm:block"
+                aria-label="Your profile and people"
+              >
+                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-surface text-xs font-bold text-ink">
+                  {initials(user.displayName)}
+                </span>
+              </Link>
+            )}
+            {user && (
+              <button
+                type="button"
+                onClick={() => void logout()}
+                className="icon-tile h-9 w-9 hover:border-rose-300 hover:text-rose-600"
+                aria-label="Sign out"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="eth-band h-[3px]" aria-hidden />
+      </header>
+
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 animate-slide-up">
+        {children}
+        <footer className="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-muted">
+          <span>Ethio Quest</span>
+          <span aria-hidden>·</span>
+          <Link to="/terms" className="font-semibold transition hover:text-ink hover:underline">
+            Terms & conditions
+          </Link>
+        </footer>
+      </main>
+
+      <nav className="fixed inset-x-0 bottom-3 z-30 px-3 pb-[env(safe-area-inset-bottom)]">
+        <ul className="mx-auto grid max-w-xl grid-cols-5 gap-1 rounded-2xl border border-line bg-surface/95 p-1.5 shadow-lift backdrop-blur-md">
+          {TABS.map(({ to, label, icon: Icon, tint }) => (
+            <li key={to}>
+              <NavLink
+                to={to}
+                className={({ isActive }) =>
+                  cn(
+                    "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-center text-[9px] font-semibold leading-tight transition sm:text-xs",
+                    isActive
+                      ? `bg-gradient-to-br ${tint} text-white shadow-md`
+                      : "text-muted hover:bg-raised hover:text-ink",
+                  )
+                }
+              >
+                <span className="relative">
+                  <Icon className="h-5 w-5" aria-hidden />
+                  {to === "/messages" && unread > 0 && (
+                    <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white ring-2 ring-surface">
+                      {unread > 9 ? "9+" : unread}
+                    </span>
+                  )}
+                </span>
+                {tt(label)}
+              </NavLink>
+            </li>
+          ))}
+        </ul>
+      </nav>
     </div>
   );
 }
 
-/** Keeps this device subscribed on every shell, including the admin workspace. */
-function PushNotificationBridge() {
-  const user = useAuth((state) => state.user);
-  const pushToast = useUI((state) => state.pushToast);
-
-  useEffect(() => {
-    if (!user) return;
-    // Repairs a missing server row after a database restore and creates the
-    // subscription on the first signed-in visit after permission is granted.
-    void syncPushSubscription();
-  }, [user?.id]);
-
-  useEffect(() => {
-    if (!user) return;
-    return listenForPushMessages((payload) => {
-      // The conversation or post is already on screen; no toast is needed.
-      if (payload.url === window.location.pathname) return;
-      pushToast(payload.body ? `${payload.title} · ${payload.body}` : payload.title, {
-        href: payload.url,
-      });
-    });
-  }, [user?.id, pushToast]);
-
-  return null;
+function Shell({ children }: { children: ReactNode }) {
+  return (
+    <RequireAuth>
+      <AppChrome>{children}</AppChrome>
+    </RequireAuth>
+  );
 }
 
 export default function App() {
-  const bootstrap = useAuth((state) => state.bootstrap);
-  const status = useAuth((state) => state.status);
-  const calendarPreference = useAuth((state) => state.user?.calendarPreference);
-  const calendar = useUI((state) => state.calendar);
-  const setCalendar = useUI((state) => state.setCalendar);
-  // Static copy is resolved by the build-time translator during render, so the
-  // tree above every screen has to re-render when the language changes.
-  const lang = useI18n((state) => state.lang);
+  const bootstrap = useAuth((s) => s.bootstrap);
+  // Every screen renders its copy through tt(), which reads the module-level
+  // language. Subscribing here re-renders the whole tree when it changes, so a
+  // language pick takes effect immediately instead of after a reload.
+  const lang = useI18n((s) => s.lang);
 
   useEffect(() => {
     void bootstrap();
   }, [bootstrap]);
 
-  // A member's saved calendar choice follows them across devices; the local
-  // preference keeps guests and instant reloads consistent.
-  useEffect(() => {
-    if (calendarPreference === "ETHIOPIAN" || calendarPreference === "GREGORIAN") {
-      if (calendarPreference !== useUI.getState().calendar) setCalendar(calendarPreference);
-    }
-  }, [calendarPreference, setCalendar]);
-
-  // Also exposed on <html> so CSS can adapt, and it keeps this component
-  // subscribed so a toggle re-renders every date on the page.
-  useEffect(() => {
-    document.documentElement.dataset.calendar = calendar;
-  }, [calendar]);
-
-  useEffect(() => {
-    document.documentElement.lang = lang;
-  }, [lang]);
-
-  if (status === "idle" || status === "loading") {
-    return <Splash />;
-  }
-
   return (
     <ErrorBoundary>
+      <div data-lang={lang} className="contents">
       <BrowserRouter>
-        <ThemeManager />
-        <PushNotificationBridge />
-        <ScrollToTop />
         <Routes>
-          <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
-
-          {/* The admin workspace is intentionally its own shell, not a tab
-              inside the community layout. AdminLayout enforces staff access. */}
+          <Route path="/login" element={<AuthPage mode="login" />} />
+          <Route path="/register" element={<AuthPage mode="register" />} />
+          <Route path="/" element={<Navigate to="/quiz" replace />} />
+          <Route path="/quiz" element={<Shell><QuizPage /></Shell>} />
+          <Route path="/travel" element={<Shell><TravelPage /></Shell>} />
+          <Route path="/travel/:slug" element={<Shell><DestinationPage /></Shell>} />
+          <Route path="/experiences" element={<Shell><ExperiencesPage /></Shell>} />
+          <Route path="/experiences/new" element={<Shell><NewExperiencePage /></Shell>} />
+          <Route path="/experiences/:id" element={<Shell><ExperienceDetailPage /></Shell>} />
+          <Route path="/messages" element={<Shell><MessagesPage /></Shell>} />
+          <Route path="/messages/:userId" element={<Shell><MessagesPage /></Shell>} />
+          <Route path="/people" element={<Shell><PeoplePage /></Shell>} />
+          <Route path="/u/:username" element={<Shell><ProfilePage /></Shell>} />
+          {/* Public, so the terms are readable before signing up or signing in. */}
+          <Route path="/terms" element={<AppChrome><TermsPage /></AppChrome>} />
           <Route
-            path="/trip/:token"
+            path="/admin"
             element={
-              <Suspense
-                fallback={
-                  <div className="flex min-h-screen items-center justify-center bg-canvas">
-                    <Spinner className="h-7 w-7" />
-                  </div>
-                }
-              >
-                <LazyTripSharePage />
-              </Suspense>
+              <RequireAdmin>
+                <AppChrome>
+                  <AdminPage />
+                </AppChrome>
+              </RequireAdmin>
             }
           />
-
-          <Route path="/admin" element={<AdminLayout />}>
-            <Route index element={<Navigate to="overview" replace />} />
-            <Route path="overview" element={<AdminOverview />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="members" element={<AdminMembers />} />
-            <Route path="content" element={<AdminContent />} />
-            <Route path="roles" element={<AdminRoles />} />
-            <Route path="audit" element={<AdminAudit />} />
-            <Route path="categories" element={<AdminCategories />} />
-            <Route path="announcements" element={<AdminAnnouncements />} />
-            <Route path="jokes" element={<AdminJokes />} />
-            <Route path="events" element={<AdminEvents />} />
-            <Route path="event-sources" element={<AdminEventSources />} />
-            <Route path="*" element={<Navigate to="overview" replace />} />
-          </Route>
-
-          <Route element={<AppLayout />}>
-            <Route path="/home" element={<HomePage />} />
-            <Route path="/explore" element={<ExplorePage />} />
-            <Route path="/places" element={<PlacesPage />} />
-            <Route path="/places/:slug" element={<PlaceDetailPage />} />
-            {/* Leaflet and the routing UI are only needed on this screen, so
-                they load on demand instead of in the main bundle. */}
-            <Route
-              path="/navigate"
-              element={
-                <Suspense
-                  fallback={
-                    <div className="flex min-h-[50vh] items-center justify-center">
-                      <Spinner className="h-7 w-7" />
-                    </div>
-                  }
-                >
-                  <LazyNavigatePage />
-                </Suspense>
-              }
-            />
-            <Route path="/travel" element={<TravelPage />} />
-            <Route path="/events" element={<EventsPage />} />
-            <Route path="/events/:slug" element={<EventDetailPage />} />
-            <Route path="/meetups" element={<EventsPage view="meetups" />} />
-            <Route path="/theatre" element={<EventsPage defaultTopic="THEATRE" />} />
-            <Route path="/sports" element={<SportsPage />} />
-            <Route path="/quiz" element={<QuizPage />} />
-            <Route path="/jokes" element={<JokesPage />} />
-            <Route path="/categories" element={<CategoriesPage />} />
-            <Route path="/c/:slug" element={<CategoryPage />} />
-
-            <Route path="/posts/:id" element={<PostDetailPage />} />
-            <Route path="/posts/:id/edit" element={requireAuthNode(<EditPostPage />)} />
-            <Route path="/create" element={requireAuthNode(<CreatePostPage />)} />
-
-            <Route path="/cinema" element={<CinemaPage />} />
-            <Route path="/cinema/:postId" element={<MovieDetailPage />} />
-            <Route path="/books" element={<BooksPage />} />
-            <Route path="/books/:postId" element={<BookDetailPage />} />
-            <Route path="/hiking" element={<HikingPage />} />
-            <Route path="/hiking/:postId" element={<HikeDetailPage />} />
-
-            <Route path="/u/:username" element={<ProfilePage />} />
-            <Route path="/u/:username/:tab" element={<FollowListPage />} />
-
-            <Route path="/search" element={<SearchPage />} />
-            <Route path="/messages" element={requireAuthNode(<MessagesPage />)} />
-            <Route path="/messages/:conversationId" element={requireAuthNode(<ConversationPage />)} />
-            <Route path="/notifications" element={requireAuthNode(<NotificationsPage />)} />
-            <Route path="/bookmarks" element={requireAuthNode(<BookmarksPage />)} />
-            <Route path="/settings" element={requireAuthNode(<SettingsPage />)} />
-
-            <Route path="*" element={<NotFound />} />
-          </Route>
+          <Route path="*" element={<Navigate to="/quiz" replace />} />
         </Routes>
-        <ToastViewport />
       </BrowserRouter>
+      </div>
     </ErrorBoundary>
   );
 }

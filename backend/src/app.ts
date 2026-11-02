@@ -6,12 +6,11 @@ import pinoHttp from "pino-http";
 import { allowedOrigins, env } from "./config/env";
 import { logger } from "./lib/logger";
 import { authenticate } from "./middleware/auth";
-import { csrfProtection, originGuard } from "./middleware/csrf";
 import { errorHandler, notFoundHandler } from "./middleware/error-handler";
 import { apiLimiter } from "./lib/rate-limit";
 import { apiRouter } from "./routes";
-import { uploadDir } from "./lib/storage";
 import { prisma } from "./lib/prisma";
+import { uploadDir } from "./lib/storage";
 
 export function createApp() {
   const app = express();
@@ -57,21 +56,6 @@ export function createApp() {
     }),
   );
 
-  app.use(originGuard);
-  app.use(csrfProtection);
-
-  app.use(
-    "/uploads",
-    express.static(uploadDir, {
-      maxAge: "7d",
-      index: false,
-      fallthrough: true,
-      setHeaders: (res) => {
-        res.setHeader("X-Content-Type-Options", "nosniff");
-      },
-    }),
-  );
-
   app.get("/api/health", async (_req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
@@ -80,6 +64,9 @@ export function createApp() {
       res.status(503).json({ status: "degraded", database: "unavailable" });
     }
   });
+
+  // Member photos are stored on disk and served from the same origin.
+  app.use("/uploads", express.static(uploadDir, { maxAge: "7d", fallthrough: true }));
 
   app.use("/api", apiLimiter, authenticate, apiRouter);
   app.use(notFoundHandler);

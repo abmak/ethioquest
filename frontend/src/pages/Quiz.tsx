@@ -1,759 +1,839 @@
-import { useEffect, useState, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  Trophy,
-  Clock,
+  Banknote,
   CheckCircle2,
-  XCircle,
-  HelpCircle,
-  ChevronRight,
-  ChevronLeft,
+  Clock,
+  Flame,
+  Lock,
   RotateCcw,
   Sparkles,
-  Award,
-  Flame,
-  Calendar,
-  Share2,
-  Medal,
-  AlertTriangle,
-  Camera,
+  Target,
+  Timer,
+  Trophy,
+  Volume2,
+  VolumeX,
+  Zap,
 } from "lucide-react";
-import { useAuth } from "../store/auth";
-import { useUI } from "../store/ui";
-import { useTranslation } from "../store/i18n";
+import { Button, Card, Modal, PageLoader } from "../components/ui";
+import { QuizLeaderboard } from "./QuizLeaderboard";
 import { api, apiError } from "../lib/api";
+import { tt, ttp } from "../lib/i18n";
+import {
+  isMuted,
+  playAdvance,
+  playAnswer,
+  playError,
+  playFinish,
+  playQuestion,
+  playTick,
+  setMuted,
+} from "../lib/sfx";
+import { cn, formatDuration } from "../lib/utils";
 import type {
-  QuizTodayResponse,
-  QuizLeaderboardResponse,
+  DailyQuizResponse,
+  QuizPaymentSummary,
+  QuizPlaySummary,
+  QuizQuestion,
+  QuizQuota,
   QuizSubmitResponse,
-  QuizQuestionItem,
-  QuizLeaderboardItem,
+  RetryMethod,
+  RetryStartResponse,
 } from "../types";
-import { Avatar, Spinner } from "../components/ui";
-import { cn } from "../lib/utils";
-import { GuessThePlace } from "./GuessThePlace";
 
-const TOTAL_TIME_SECONDS = 150; // 150 seconds for 10 questions
+type Answer = number | number[];
+
+interface QuestionTime {
+  questionId: string;
+  seconds: number;
+}
+
+function answeredCount(question: QuizQuestion, answer: Answer | undefined): boolean {
+  if (question.type === "MATCHING") return Array.isArray(answer) && answer.length === question.matchLefts.length && answer.every((v) => v >= 0);
+  return typeof answer === "number";
+}
+
+const CATEGORY_STYLES: Record<string, string> = {
+  HISTORY: "bg-amber-100 text-amber-800 ring-amber-200",
+  HERITAGE: "bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-200",
+  NATURE: "bg-emerald-100 text-emerald-800 ring-emerald-200",
+  WILDLIFE: "bg-lime-100 text-lime-800 ring-lime-200",
+  ADVENTURE: "bg-orange-100 text-orange-800 ring-orange-200",
+  CULTURE: "bg-violet-100 text-violet-800 ring-violet-200",
+  CITY: "bg-sky-100 text-sky-800 ring-sky-200",
+  FOOD: "bg-rose-100 text-rose-800 ring-rose-200",
+};
+
+function categoryStyle(category: string): string {
+  return CATEGORY_STYLES[category.toUpperCase()] ?? "bg-slate-100 text-slate-700 ring-slate-200";
+}
+
+const OPTION_LETTERS = ["A", "B", "C", "D", "E", "F"];
+const ADVANCE_DELAY_MS = 420;
 
 export function QuizPage() {
-  const { t, lang } = useTranslation();
-  const user = useAuth((state) => state.user);
-  const pushToast = useUI((state) => state.pushToast);
-  const navigate = useNavigate();
-  const [game, setGame] = useState<"TRIVIA" | "PLACE">("TRIVIA");
-
-  // Mode: "LOBBY" | "PLAYING" | "REVIEW"
-  const [mode, setMode] = useState<"LOBBY" | "PLAYING" | "REVIEW">("LOBBY");
-
-  // Quiz Data
+  const [quiz, setQuiz] = useState<DailyQuizResponse | null>(null);
+  const [answers, setAnswers] = useState<Record<string, Answer>>({});
+  const [index, setIndex] = useState(0);
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [questionStartedAt, setQuestionStartedAt] = useState<number | null>(null);
+  const [times, setTimes] = useState<QuestionTime[]>([]);
+  const [advancing, setAdvancing] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const [result, setResult] = useState<QuizSubmitResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [quizData, setQuizData] = useState<QuizTodayResponse | null>(null);
-  const [leaderboard, setLeaderboard] = useState<QuizLeaderboardItem[]>([]);
-  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [muted, setMutedState] = useState(isMuted);
+  const [payOpen, setPayOpen] = useState(false);
+  const [payBusy, setPayBusy] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+  const submittingRef = useRef(false);
 
-  // Playing State
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [selectedAnswers, setSelectedAnswers] = useState<number[]>(Array(10).fill(-1));
-  const [secondsRemaining, setSecondsRemaining] = useState(TOTAL_TIME_SECONDS);
-  const [submitting, setSubmitting] = useState(false);
-  const startTimeRef = useRef<number>(0);
+  /** Resets the play state and starts the clock from the server's start time. */
+  const beginPlay = (startedAtIso: string) => {
+    setStartedAt(new Date(startedAtIso).getTime());
+    setNow(Date.now());
+    setIndex(0);
+    setTimes([]);
+    setAnswers({});
+    setResult(null);
+    setAdvancing(false);
+    setError(null);
+  };
 
-  // Completed / Review State
-  const [resultReview, setResultReview] = useState<QuizSubmitResponse | null>(null);
-
-  const loadTodayQuiz = async () => {
+  const load = async () => {
+    setLoading(true);
     try {
-      setLoading(true);
-      const res = await api.get<QuizTodayResponse>("/api/quiz/today");
-      setQuizData(res.data);
-
-      if (res.data.alreadyCompleted) {
-        setMode("REVIEW");
-      }
+      const response = await api.get<DailyQuizResponse>("/api/quiz/daily");
+      setQuiz(response.data);
+      // Picking up an unfinished play after a refresh resumes it on the clock.
+      if (response.data.attempt) beginPlay(response.data.attempt.startedAt);
     } catch (err) {
-      pushToast(apiError(err), { tone: "error" });
+      setError(apiError(err));
     } finally {
       setLoading(false);
     }
   };
 
-  const loadLeaderboard = async () => {
-    try {
-      setLeaderboardLoading(true);
-      const res = await api.get<QuizLeaderboardResponse>("/api/quiz/leaderboard");
-      setLeaderboard(res.data.leaderboard);
-    } catch (e) {
-      console.warn("Could not fetch leaderboard", e);
-    } finally {
-      setLeaderboardLoading(false);
-    }
+  const sync = async () => {
+    const response = await api.get<DailyQuizResponse>("/api/quiz/daily");
+    setQuiz(response.data);
+    return response.data;
   };
 
   useEffect(() => {
-    void loadTodayQuiz();
-    void loadLeaderboard();
+    void load();
   }, []);
 
-  // 150-second Countdown Timer
   useEffect(() => {
-    if (mode !== "PLAYING") return;
+    if (startedAt === null) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 500);
+    return () => window.clearInterval(timer);
+  }, [startedAt]);
 
-    const timer = setInterval(() => {
-      setSecondsRemaining((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          void handleTimeExpiredSubmit();
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+  const limitMs = (quiz?.timeLimitSeconds ?? 150) * 1000;
+  const elapsed = startedAt === null ? 0 : now - startedAt;
+  const remaining = Math.max(0, limitMs - elapsed);
+  const secondsLeft = Math.ceil(remaining / 1000);
 
-    return () => clearInterval(timer);
-  }, [mode, selectedAnswers]);
+  const inProgress = startedAt !== null && !result;
 
-  const handleStartQuiz = () => {
-    if (!user) {
-      pushToast("Please sign in to take the daily quiz and join the leaderboard!");
-      navigate("/login");
-      return;
-    }
-    if (!quizData || quizData.questions.length === 0) return;
+  // A fresh question gets its chime and its own stopwatch.
+  useEffect(() => {
+    if (!inProgress) return;
+    playQuestion();
+    setQuestionStartedAt(Date.now());
+  }, [index, inProgress]);
 
-    setSelectedAnswers(Array(10).fill(-1));
-    setCurrentIndex(0);
-    setSecondsRemaining(TOTAL_TIME_SECONDS);
-    startTimeRef.current = Date.now();
-    setMode("PLAYING");
-  };
+  // Tick for the last fifteen seconds so the pressure is audible.
+  useEffect(() => {
+    if (!inProgress) return;
+    if (secondsLeft > 0 && secondsLeft <= 15) playTick(secondsLeft <= 5);
+  }, [secondsLeft, inProgress]);
 
-  const handleSelectOption = (optionIndex: number) => {
-    setSelectedAnswers((prev) => {
-      const copy = [...prev];
-      copy[currentIndex] = optionIndex;
-      return copy;
-    });
-  };
-
-  const handleTimeExpiredSubmit = async () => {
-    pushToast("Time's up! Submitting your answers…", { tone: "default" });
-    await submitQuiz(selectedAnswers, TOTAL_TIME_SECONDS * 1000);
-  };
-
-  const handleUserSubmit = async () => {
-    const elapsedMs = Date.now() - startTimeRef.current;
-    await submitQuiz(selectedAnswers, Math.min(TOTAL_TIME_SECONDS * 1000, elapsedMs));
-  };
-
-  const submitQuiz = async (answers: number[], durationMs: number) => {
-    if (submitting) return;
+  const submit = async (finalAnswers: Record<string, Answer> = answers) => {
+    if (!quiz || submittingRef.current) return;
+    submittingRef.current = true;
+    setBusy(true);
+    setError(null);
     try {
-      setSubmitting(true);
-      // Map unfilled to 0 as fallback
-      const sanitizedAnswers = answers.map((a) => (a >= 0 && a <= 3 ? a : 0));
-
-      const res = await api.post<QuizSubmitResponse>("/api/quiz/submit", {
-        answers: sanitizedAnswers,
-        durationMs,
-      });
-
-      setResultReview(res.data);
-      setMode("REVIEW");
-      void loadLeaderboard();
-      pushToast(`Challenge complete! You scored ${res.data.score}/10! 🇪🇹`, { tone: "success" });
+      // Unanswered questions are left out; the server grades them as incorrect.
+      const payload = {
+        answers: quiz.questions
+          .filter((q) => answeredCount(q, finalAnswers[q.id]))
+          .map((q) => ({ questionId: q.id, answer: finalAnswers[q.id] as Answer })),
+      };
+      const response = await api.post<QuizSubmitResponse>("/api/quiz/daily/submit", payload);
+      playFinish();
+      setResult(response.data);
+      setStartedAt(null);
+      setQuestionStartedAt(null);
+      // Refresh the quota and the list of finished plays for this card.
+      void sync().catch(() => undefined);
     } catch (err) {
-      pushToast(apiError(err), { tone: "error" });
+      setError(apiError(err, "Could not submit your answers."));
+      playError();
+      // Let the member answer again if the submission failed.
+      setAdvancing(false);
     } finally {
-      setSubmitting(false);
+      setBusy(false);
+      submittingRef.current = false;
     }
   };
 
-  const handleShare = () => {
-    const score = resultReview?.score ?? quizData?.score ?? 0;
-    const shareText = `I scored ${score}/10 in today's 'Lets Know Ethiopia' daily trivia on Addis Gebeta! Can you beat my score? 🇪🇹`;
-    if (navigator.share) {
-      void navigator.share({
-        title: "Lets Know Ethiopia · Addis Gebeta",
-        text: shareText,
-        url: window.location.href,
+  const start = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      const response = await api.post<{ startedAt: string }>("/api/quiz/daily/start");
+      beginPlay(response.data.startedAt);
+    } catch (err) {
+      const status = (err as { response?: { status?: number } }).response?.status;
+      // The server asks for the 3 ETB retry payment before a second play.
+      if (status === 402) {
+        setPayError(null);
+        setPayOpen(true);
+        return;
+      }
+      setError(apiError(err, "Could not start the challenge."));
+      playError();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  /**
+   * Confirms the 3 ETB payment (made in cash or by mobile money) and starts the
+   * paid play the server records alongside that confirmation.
+   */
+  const startRetry = async (method: RetryMethod, reference: string) => {
+    setPayBusy(true);
+    setPayError(null);
+    try {
+      const response = await api.post<RetryStartResponse>("/api/quiz/daily/retry", {
+        method,
+        reference: reference.trim() || undefined,
       });
-    } else {
-      void navigator.clipboard.writeText(shareText);
-      pushToast("Score copied to clipboard!");
+      playAdvance();
+      setPayOpen(false);
+      await sync();
+      beginPlay(response.data.startedAt);
+    } catch (err) {
+      setPayError(apiError(err, "Could not unlock the retry."));
+      playError();
+    } finally {
+      setPayBusy(false);
     }
   };
 
-  if (loading) {
-    return (
-      <div className="flex min-h-[50vh] flex-col items-center justify-center gap-3">
-        <Spinner className="h-8 w-8 text-brand-600" />
-        <p className="text-xs text-muted">Loading today's Ethiopian challenge…</p>
-      </div>
-    );
-  }
+  useEffect(() => {
+    if (startedAt !== null && !result && remaining === 0 && quiz) void submit(answers);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [remaining, startedAt]);
 
-  const currentQ = quizData?.questions[currentIndex];
-  const answeredCount = selectedAnswers.filter((a) => a !== -1).length;
-  const timerPercentage = (secondsRemaining / TOTAL_TIME_SECONDS) * 100;
+  /**
+   * Answers are locked in automatically: once a question is fully answered we
+   * record its time, play the confirmation and move to the next one (or submit
+   * on the final question). There is no manual Next or Submit button.
+   */
+  const answerQuestion = (value: Answer) => {
+    if (!quiz || advancing || result) return;
+    const question = quiz.questions[index];
+    const nextAnswers = { ...answers, [question.id]: value };
+    setAnswers(nextAnswers);
+    playAnswer();
+
+    if (!answeredCount(question, value)) return;
+
+    const seconds = questionStartedAt ? Math.max(1, Math.round((Date.now() - questionStartedAt) / 1000)) : 0;
+    setTimes((current) => [...current.filter((t) => t.questionId !== question.id), { questionId: question.id, seconds }]);
+    setAdvancing(true);
+
+    window.setTimeout(() => {
+      playAdvance();
+      if (index >= quiz.questions.length - 1) {
+        void submit(nextAnswers);
+      } else {
+        setIndex((i) => i + 1);
+        setAdvancing(false);
+      }
+    }, ADVANCE_DELAY_MS);
+  };
+
+  const toggleSound = () => {
+    const next = !muted;
+    setMuted(next);
+    setMutedState(next);
+    if (!next) playAnswer();
+  };
+
+  if (loading) return <PageLoader />;
+  if (!quiz) return <p className="text-sm text-rose-700">{error}</p>;
+
+  const scorePercent = result ? Math.max(0, Math.min(100, result.score)) : 0;
+  const current = quiz.questions[index];
+  const secondsOnQuestion = questionStartedAt ? Math.max(0, Math.floor((now - questionStartedAt) / 1000)) : 0;
+  const quota = quiz.quota;
+  const plays = quiz.plays;
+  const best = quiz.best;
 
   return (
-    <div className="mx-auto max-w-5xl space-y-8 pb-20">
-      {/* The two daily challenges share this page. */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-2xl border border-line bg-surface p-1">
-          <button
-            type="button"
-            onClick={() => setGame("TRIVIA")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition",
-              game === "TRIVIA"
-                ? "bg-amber-500/15 text-amber-700 shadow-sm dark:text-amber-300"
-                : "text-muted hover:text-ink",
-            )}
-          >
-            <Award className="h-4 w-4" />
-            <span>Knowledge Q&amp;A</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setGame("PLACE")}
-            className={cn(
-              "inline-flex items-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition",
-              game === "PLACE"
-                ? "bg-emerald-500/15 text-emerald-700 shadow-sm dark:text-emerald-300"
-                : "text-muted hover:text-ink",
-            )}
-          >
-            <Camera className="h-4 w-4" />
-            <span>Guess the Place</span>
-          </button>
+    <div className="flex flex-col gap-6">
+      {/* Hero: the challenge story, its rules and the start action. */}
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-fuchsia-600 via-orange-500 to-amber-400 p-6 text-white shadow-[0_24px_70px_-30px_rgba(219,39,119,0.85)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-fuchsia-300/40 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute inset-0 opacity-[0.14]" aria-hidden>
+          <div className="absolute left-6 top-10 h-2 w-2 rounded-full bg-white" />
+          <div className="absolute right-16 top-16 h-3 w-3 rounded-full bg-white" />
+          <div className="absolute bottom-12 left-1/3 h-2.5 w-2.5 rounded-full bg-white" />
+          <div className="absolute right-1/3 top-8 h-1.5 w-1.5 rounded-full bg-white" />
         </div>
-        <p className="text-[11px] font-medium text-muted">Two daily challenges · 10 questions each</p>
-      </div>
 
-      {game === "PLACE" ? (
-        <GuessThePlace />
-      ) : (
-        <>
-      {/* Top Banner */}
-      <div className="relative overflow-hidden rounded-3xl border border-line bg-gradient-to-br from-amber-950 via-zinc-950 to-emerald-950 p-6 text-white shadow-lift sm:p-8">
-        <div className="absolute right-0 top-0 -mr-16 -mt-16 h-64 w-64 rounded-full bg-amber-500/15 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 -mb-16 h-48 w-48 rounded-full bg-emerald-500/10 blur-2xl" />
+        <div className="relative flex flex-col gap-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ring-1 ring-white/30 backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5" aria-hidden />
+              Daily challenge
+            </span>
+            <button
+              type="button"
+              onClick={toggleSound}
+              aria-pressed={!muted}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-bold ring-1 ring-white/30 backdrop-blur transition hover:bg-white/30"
+            >
+              {muted ? <VolumeX className="h-3.5 w-3.5" aria-hidden /> : <Volume2 className="h-3.5 w-3.5" aria-hidden />}
+              {muted ? "Sound off" : "Sound on"}
+            </button>
+          </div>
 
-        <div className="relative z-10 flex flex-col justify-between gap-6 md:flex-row md:items-center">
-          <div className="max-w-2xl space-y-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3.5 py-1 text-xs font-semibold backdrop-blur-md">
-              <Award className="h-4 w-4 text-amber-400" />
-              <span>Lets Know Ethiopia</span>
-              <span className="font-ethiopic text-[11px] text-amber-300">· ኢትዮጵያን እናውቃት</span>
-            </div>
-
-            <h1 className="font-serif text-2xl font-bold tracking-tight text-white sm:text-3xl md:text-4xl">
-              Daily 10-Question Heritage & Culture Challenge
+          <div>
+            <h1 className="font-display text-3xl font-black leading-tight sm:text-5xl">
+              Let&apos;s Know Ethiopia
             </h1>
-
-            <p className="text-sm leading-relaxed text-zinc-300 sm:text-base">
-              Test your knowledge of Ethiopian history, Emperors, the Battle of Adwa, rock-hewn Lalibela,
-              traditional coffee ceremonies, and athletic legends. 150 seconds on the clock!
+            <p className="mt-2 max-w-lg text-sm text-white/90 sm:text-base">
+              Ten questions on Ethiopian history, culture and heritage, with photo rounds on the places themselves.
+              Pick an answer and the next question comes straight away — answer fast, answer right, and climb the
+              monthly prize table.
             </p>
           </div>
 
-          {mode === "LOBBY" && !quizData?.alreadyCompleted && (
+          <div className="flex flex-wrap gap-2 text-xs font-semibold">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+              <Target className="h-3.5 w-3.5" aria-hidden /> 10 questions
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+              <Clock className="h-3.5 w-3.5" aria-hidden /> {quiz.timeLimitSeconds / 60} minutes
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+              <Flame className="h-3.5 w-3.5" aria-hidden /> {quota.playsUsed} of {quota.maxPlays} plays today
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+              <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Retry {quota.retryPriceEtb} ETB
+            </span>
+          </div>
+
+          {!result && !inProgress && !quota.exhausted && (
             <button
               type="button"
-              onClick={handleStartQuiz}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 px-7 py-4 text-sm font-black text-zinc-950 shadow-glow transition hover:scale-105 active:scale-95 sm:self-start md:self-auto"
+              onClick={() => (quota.freeAvailable ? void start() : setPayOpen(true))}
+              disabled={busy}
+              className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-fuchsia-700 shadow-lg shadow-fuchsia-900/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
             >
-              <Sparkles className="h-5 w-5" />
-              <span>Start Today's Quiz (150s)</span>
+              {quota.freeAvailable ? <Zap className="h-4 w-4" aria-hidden /> : <RotateCcw className="h-4 w-4" aria-hidden />}
+              {busy
+                ? "Starting…"
+                : quota.freeAvailable
+                  ? "Start today's free challenge"
+                  : ttp("Retry for {price} ETB", { price: quota.retryPriceEtb })}
             </button>
           )}
 
-          {mode === "REVIEW" && (
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleShare}
-                className="inline-flex items-center gap-2 rounded-2xl bg-white/10 border border-white/20 px-5 py-3 text-xs font-bold text-white backdrop-blur-md hover:bg-white/20"
-              >
-                <Share2 className="h-4 w-4" />
-                <span>Share Score</span>
-              </button>
+          {!inProgress && quota.exhausted && (
+            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white/20 px-4 py-2 text-sm font-semibold ring-1 ring-white/30">
+              <Lock className="h-4 w-4" aria-hidden /> All {quota.maxPlays} plays used — retries reopen after midnight (EAT)
+            </span>
+          )}
+
+          {result && !quota.exhausted && (
+            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white/20 px-4 py-2 text-sm font-semibold ring-1 ring-white/30">
+              <Trophy className="h-4 w-4" aria-hidden /> Best today {best?.score ?? result.score} · retry below for{" "}
+              {quota.retryPriceEtb} ETB
+            </span>
+          )}
+        </div>
+      </section>
+
+      {result && (
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-emerald-600 via-teal-500 to-cyan-500 p-6 text-white shadow-[0_24px_70px_-32px_rgba(5,150,105,0.9)]">
+          <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-lime-300/30 blur-2xl" aria-hidden />
+          <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
+            <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
+              <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ring-1 ring-white/30">
+                <Sparkles className="h-3.5 w-3.5" aria-hidden /> Result
+              </span>
+              <h2 className="font-display text-2xl font-black sm:text-3xl">
+                {scorePercent >= 80 ? "Outstanding!" : scorePercent >= 50 ? "Nicely done!" : "Good effort!"}
+              </h2>
+              <p className="text-sm text-white/90">
+                {result.correctCount} of {result.totalQuestions} correct in {formatDuration(result.durationMs)}
+                {result.timedOut && " · time ran out, so this attempt is not scored"}
+              </p>
+            </div>
+            <div
+              className="grid h-36 w-36 shrink-0 place-items-center rounded-full"
+              style={{ background: `conic-gradient(#facc15 ${scorePercent}%, rgba(255,255,255,0.2) 0)` }}
+              role="img"
+              aria-label={`Score ${result.score} out of 100`}
+            >
+              <div className="grid h-28 w-28 place-items-center rounded-full bg-emerald-900/45 backdrop-blur">
+                <p className="text-3xl font-black leading-none">{result.score}</p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">of 100</p>
+              </div>
+            </div>
+          </div>
+
+          {times.length > 0 && (
+            <div className="relative mt-5 rounded-2xl bg-white/12 p-3 ring-1 ring-white/20">
+              <p className="mb-2 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-white/80">
+                <Timer className="h-3.5 w-3.5" aria-hidden /> Time per question
+              </p>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-5">
+                {times.map((time, i) => (
+                  <li key={time.questionId} className="flex items-center justify-between gap-2 rounded-lg bg-white/10 px-2 py-1">
+                    <span className="font-semibold text-white/85">Q{i + 1}</span>
+                    <span className="font-black tabular-nums">{time.seconds}s</span>
+                  </li>
+                ))}
+              </ul>
             </div>
           )}
+        </Card>
+      )}
+
+      {!inProgress && (plays.length > 0 || quota.exhausted) && (
+        <DailyPlaysCard
+          quota={quota}
+          plays={plays}
+          best={best}
+          payments={quiz.payments}
+          busy={busy || payBusy}
+          onRetry={() => {
+            setPayError(null);
+            playAnswer();
+            setPayOpen(true);
+          }}
+        />
+      )}
+
+      {inProgress && current && (
+        <QuestionView
+          question={current}
+          answer={answers[current.id]}
+          position={index}
+          total={quiz.questions.length}
+          remainingMs={remaining}
+          secondsOnQuestion={secondsOnQuestion}
+          advancing={advancing}
+          onAnswer={answerQuestion}
+        />
+      )}
+
+      {error && (
+        <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
+          {error}
+        </p>
+      )}
+
+      <QuizLeaderboard />
+
+      <RetryDialog
+        open={payOpen}
+        price={quota.retryPriceEtb}
+        busy={payBusy}
+        error={payError}
+        onClose={() => setPayOpen(false)}
+        onSubmit={(method, reference) => void startRetry(method, reference)}
+      />
+    </div>
+  );
+}
+
+const PAYMENT_METHODS: { value: RetryMethod; label: string; hint: string }[] = [
+  { value: "TELEBIRR", label: "Telebirr", hint: "Mobile money transfer" },
+  { value: "CBE_BIRR", label: "CBE Birr", hint: "CBE wallet transfer" },
+  { value: "CASH", label: "Cash", hint: "Give 3 ETB to the host" },
+];
+
+function paymentLabel(method: string): string {
+  return PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method;
+}
+
+/** Today's plays, the best result so far and the paid retry action. */
+function DailyPlaysCard({
+  quota,
+  plays,
+  best,
+  payments,
+  busy,
+  onRetry,
+}: {
+  quota: QuizQuota;
+  plays: QuizPlaySummary[];
+  best: QuizPlaySummary | null;
+  payments: QuizPaymentSummary[];
+  busy: boolean;
+  onRetry: () => void;
+}) {
+  const byPlay = new Map(payments.map((p) => [p.playIndex, p]));
+
+  return (
+    <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-amber-50 via-white to-fuchsia-50 p-5 ring-1 ring-violet-100 sm:p-6">
+      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-fuchsia-200/40 blur-2xl" aria-hidden />
+      <div className="relative flex flex-col gap-3">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/25">
+              <RotateCcw className="h-5 w-5" aria-hidden />
+            </span>
+            <div>
+              <h2 className="font-display text-lg font-black text-slate-900">Today&apos;s plays</h2>
+              <p className="text-xs text-slate-500">
+                First play free · each retry {quota.retryPriceEtb} ETB · {quota.maxPlays} plays a day
+              </p>
+            </div>
+          </div>
+          <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-black text-white">
+            {quota.playsUsed} / {quota.maxPlays}
+          </span>
+        </div>
+
+        <div className="flex gap-1.5" aria-hidden>
+          {Array.from({ length: quota.maxPlays }).map((_, i) => (
+            <span
+              key={i}
+              className={cn(
+                "h-2 flex-1 rounded-full transition",
+                i < quota.playsUsed ? "bg-gradient-to-r from-violet-600 to-fuchsia-500" : "bg-slate-200",
+              )}
+            />
+          ))}
+        </div>
+
+        {best && (
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-amber-200">
+            <Trophy className="h-5 w-5 shrink-0 text-amber-500" aria-hidden />
+            <p className="text-sm text-slate-700">
+              Best today <strong className="font-black text-slate-900">{best.score}/100</strong> · {best.correctCount}/
+              {best.totalQuestions} correct · {formatDuration(best.durationMs)}
+            </p>
+          </div>
+        )}
+
+        <ol className="flex flex-col gap-1.5">
+          {plays.map((play) => {
+            const payment = byPlay.get(play.playIndex);
+            return (
+              <li
+                key={play.playIndex}
+                className="flex items-center justify-between gap-3 rounded-xl bg-white/80 px-3 py-2 ring-1 ring-slate-200"
+              >
+                <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-700">
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+                  Play {play.playIndex + 1}
+                  {play.paid ? (
+                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                      {quota.retryPriceEtb} ETB · {payment ? paymentLabel(payment.method) : "paid"}
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                      Free
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 text-sm font-black tabular-nums text-slate-900">
+                  {play.score}
+                  <span className="text-xs font-semibold text-slate-500">/100</span>
+                </span>
+              </li>
+            );
+          })}
+        </ol>
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <p className="max-w-xs text-xs text-slate-500">
+            {quota.exhausted
+              ? "All 10 plays are used for today. Retries reopen at midnight, East Africa Time."
+              : ttp("Pay {price} ETB for a fresh ten-question set, then confirm the payment to start.", { price: quota.retryPriceEtb })}
+          </p>
+          <Button onClick={onRetry} disabled={quota.exhausted || busy} className="min-h-11 px-4">
+            {quota.exhausted ? <Lock className="h-4 w-4" aria-hidden /> : <RotateCcw className="h-4 w-4" aria-hidden />}
+            {quota.exhausted
+              ? "Daily limit reached"
+              : busy
+                ? "Starting…"
+                : ttp("Retry for {price} ETB", { price: quota.retryPriceEtb })}
+          </Button>
         </div>
       </div>
+    </Card>
+  );
+}
 
-      {/* Main Container */}
-      <div className="grid gap-8 lg:grid-cols-3">
-        {/* Left 2 Cols: Quiz Gameplay or Lobby/Review */}
-        <div className="space-y-6 lg:col-span-2">
-          {/* LOBBY STATE */}
-          {mode === "LOBBY" && !quizData?.alreadyCompleted && (
-            <div className="space-y-6 rounded-3xl border border-line bg-surface p-6 sm:p-8">
-              <h2 className="text-lg font-bold text-ink">How Today's Challenge Works</h2>
+/** Confirms the manual 3 ETB payment that unlocks one more play. */
+function RetryDialog({
+  open,
+  price,
+  busy,
+  error,
+  onClose,
+  onSubmit,
+}: {
+  open: boolean;
+  price: number;
+  busy: boolean;
+  error: string | null;
+  onClose: () => void;
+  onSubmit: (method: RetryMethod, reference: string) => void;
+}) {
+  const [method, setMethod] = useState<RetryMethod>("TELEBIRR");
+  const [reference, setReference] = useState("");
 
-              <div className="grid gap-4 sm:grid-cols-3">
-                <div className="rounded-2xl border border-line/60 bg-surface-raised/40 p-4">
-                  <div className="rounded-xl bg-amber-500/10 p-2.5 w-fit text-amber-600 dark:text-amber-400">
-                    <Clock className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-3 text-xs font-bold text-ink">150 Seconds</h3>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted">
-                    Fast-paced countdown for all 10 questions. Remaining seconds count toward speed tiebreakers.
-                  </p>
-                </div>
+  useEffect(() => {
+    if (open) setReference("");
+  }, [open]);
 
-                <div className="rounded-2xl border border-line/60 bg-surface-raised/40 p-4">
-                  <div className="rounded-xl bg-brand-500/10 p-2.5 w-fit text-brand-600 dark:text-brand-400">
-                    <Calendar className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-3 text-xs font-bold text-ink">1 Daily Challenge</h3>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted">
-                    Fresh set of 10 questions every day from our 2,000-question Ethiopian historical pool.
-                  </p>
-                </div>
+  return (
+    <Modal open={open} onClose={busy ? () => undefined : onClose} title={ttp("Unlock a retry — {price} ETB", { price })}>
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          if (!busy) onSubmit(method, reference);
+        }}
+        className="flex flex-col gap-4"
+      >
+        <p className="text-sm text-muted">
+          Your first play each day is free. Every extra play costs {price} ETB, and a member can play at most 10 times a
+          day.
+        </p>
 
-                <div className="rounded-2xl border border-line/60 bg-surface-raised/40 p-4">
-                  <div className="rounded-xl bg-emerald-500/10 p-2.5 w-fit text-emerald-600 dark:text-emerald-400">
-                    <Trophy className="h-5 w-5" />
-                  </div>
-                  <h3 className="mt-3 text-xs font-bold text-ink">Daily Leaderboard</h3>
-                  <p className="mt-1 text-[11px] leading-relaxed text-muted">
-                    Ranked by highest score (10/10) and lowest completion time. Compete with the community!
-                  </p>
-                </div>
-              </div>
+        <fieldset className="flex flex-col gap-2">
+          <legend className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted">How did you pay?</legend>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {PAYMENT_METHODS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                onClick={() => setMethod(option.value)}
+                aria-pressed={method === option.value}
+                className={cn(
+                  "flex flex-col items-start gap-0.5 rounded-2xl border-2 px-3 py-2 text-left transition",
+                  method === option.value
+                    ? "border-fuchsia-500 bg-fuchsia-50 shadow-sm"
+                    : "border-slate-200 hover:border-violet-300",
+                )}
+              >
+                <span className="text-sm font-bold text-slate-900">{tt(option.label)}</span>
+                <span className="text-[11px] text-muted">{tt(option.hint)}</span>
+              </button>
+            ))}
+          </div>
+        </fieldset>
 
-              <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4 text-xs text-amber-800 dark:text-amber-300">
-                <p className="flex items-center gap-2 font-semibold">
-                  <AlertTriangle className="h-4 w-4 shrink-0" />
-                  Fair Play Rule
-                </p>
-                <p className="mt-1 leading-relaxed text-[11px] opacity-90">
-                  Every community member receives the exact same 10 questions today. Once you start, the 150-second
-                  timer will run continuously until you submit or time runs out.
-                </p>
-              </div>
+        <label className="flex flex-col gap-1 text-sm font-semibold text-ink">
+          Payment reference (optional)
+          <input
+            value={reference}
+            onChange={(event) => setReference(event.target.value)}
+            maxLength={80}
+            placeholder="e.g. Telebirr transaction ID"
+            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-ink outline-none focus:border-fuchsia-500"
+          />
+        </label>
 
-              <div className="pt-2">
-                <button
-                  type="button"
-                  onClick={handleStartQuiz}
-                  className="w-full rounded-2xl bg-brand-700 py-3.5 text-center text-sm font-bold text-white shadow-lift transition hover:bg-brand-600"
-                >
-                  I'm Ready · Start 150s Challenge
-                </button>
-              </div>
-            </div>
-          )}
+        <p className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200">
+          <Banknote className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          Pay before confirming. Your confirmation is saved with the play so the Ethio Quest team can review it.
+        </p>
 
-          {/* PLAYING STATE */}
-          {mode === "PLAYING" && currentQ && (
-            <div className="space-y-6">
-              {/* Sticky Timer Bar */}
-              <div className="sticky top-16 z-30 overflow-hidden rounded-2xl border border-line bg-surface/95 p-4 shadow-lift backdrop-blur-md">
-                <div className="flex items-center justify-between text-xs font-bold">
-                  <div className="flex items-center gap-2 text-ink">
-                    <span className="rounded-lg bg-brand-500/10 px-2.5 py-1 text-brand-600 dark:text-brand-300">
-                      Question {currentIndex + 1} of 10
-                    </span>
-                    <span className="text-[11px] text-muted">
-                      ({answeredCount}/10 answered)
-                    </span>
-                  </div>
+        {error && (
+          <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+            {error}
+          </p>
+        )}
 
-                  {/* Timer Display */}
-                  <div
-                    className={cn(
-                      "flex items-center gap-1.5 rounded-xl px-3 py-1 font-mono text-sm font-black transition",
-                      secondsRemaining <= 15
-                        ? "bg-rose-500 text-white animate-pulse"
-                        : secondsRemaining <= 45
-                          ? "bg-amber-500 text-zinc-950"
-                          : "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400",
-                    )}
-                  >
-                    <Clock className="h-4 w-4" />
-                    <span>{secondsRemaining}s</span>
-                  </div>
-                </div>
+        <Button type="submit" loading={busy} className="w-full">
+          I have paid {price} ETB — start retry
+        </Button>
+      </form>
+    </Modal>
+  );
+}
 
-                {/* Progress Bar */}
-                <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-line">
-                  <div
-                    className={cn(
-                      "h-full transition-all duration-1000",
-                      secondsRemaining <= 15
-                        ? "bg-rose-500"
-                        : secondsRemaining <= 45
-                          ? "bg-amber-500"
-                          : "bg-emerald-500",
-                    )}
-                    style={{ width: `${timerPercentage}%` }}
-                  />
-                </div>
-              </div>
+interface QuestionViewProps {
+  question: QuizQuestion;
+  position: number;
+  total: number;
+  answer: Answer | undefined;
+  remainingMs: number;
+  secondsOnQuestion: number;
+  advancing: boolean;
+  onAnswer: (value: Answer) => void;
+}
 
-              {/* Active Question Card */}
-              <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-lift">
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-amber-500/10 px-3 py-0.5 text-[11px] font-semibold text-amber-600 dark:text-amber-400">
-                    {currentQ.category}
-                  </span>
-                  <span className="text-[10px] uppercase tracking-wider text-muted font-bold">
-                    {currentQ.difficulty}
-                  </span>
-                </div>
+function QuestionView({ question, position, total, answer, remainingMs, secondsOnQuestion, advancing, onAnswer }: QuestionViewProps) {
+  const seconds = Math.ceil(remainingMs / 1000);
+  const lowOnTime = seconds <= 30;
+  const progress = Math.round(((position + 1) / total) * 100);
 
-                <h2 className="mt-4 text-base font-bold text-ink sm:text-lg leading-relaxed">
-                  {currentQ.prompt}
-                </h2>
+  return (
+    <Card className="relative overflow-hidden rounded-3xl border-violet-100 p-5 sm:p-6">
+      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-violet-200/40 blur-2xl" aria-hidden />
 
-                {/* Options Grid */}
-                <div className="mt-6 space-y-3">
-                  {currentQ.options.map((option, optIdx) => {
-                    const isSelected = selectedAnswers[currentIndex] === optIdx;
-                    const letter = String.fromCharCode(65 + optIdx); // A, B, C, D
-
-                    return (
-                      <button
-                        key={optIdx}
-                        type="button"
-                        onClick={() => handleSelectOption(optIdx)}
-                        className={cn(
-                          "flex w-full items-center gap-3.5 rounded-2xl border p-4 text-left text-xs font-semibold transition active:scale-[0.99]",
-                          isSelected
-                            ? "border-amber-500 bg-amber-500/10 text-ink shadow-sm ring-1 ring-amber-500/30"
-                            : "border-line bg-surface-raised/30 text-ink hover:border-line hover:bg-surface-raised",
-                        )}
-                      >
-                        <span
-                          className={cn(
-                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
-                            isSelected
-                              ? "bg-amber-500 text-zinc-950 font-black"
-                              : "bg-surface border border-line text-muted",
-                          )}
-                        >
-                          {letter}
-                        </span>
-                        <span className="leading-relaxed">{option}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Navigation Buttons */}
-                <div className="mt-8 flex items-center justify-between border-t border-line/60 pt-4">
-                  <button
-                    type="button"
-                    disabled={currentIndex === 0}
-                    onClick={() => setCurrentIndex((prev) => Math.max(0, prev - 1))}
-                    className="inline-flex items-center gap-1.5 rounded-xl border border-line bg-surface px-4 py-2 text-xs font-semibold text-muted hover:text-ink disabled:opacity-40"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    <span>Previous</span>
-                  </button>
-
-                  {currentIndex < 9 ? (
-                    <button
-                      type="button"
-                      onClick={() => setCurrentIndex((prev) => Math.min(9, prev + 1))}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-brand-700 px-5 py-2 text-xs font-bold text-white shadow-sm hover:bg-brand-600"
-                    >
-                      <span>Next</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      disabled={submitting}
-                      onClick={handleUserSubmit}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-6 py-2.5 text-xs font-black text-white shadow-glow hover:bg-emerald-500"
-                    >
-                      {submitting && <Spinner className="h-3.5 w-3.5" />}
-                      <span>Submit Answers</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Question dots navigator */}
-                <div className="mt-6 flex flex-wrap justify-center gap-1.5">
-                  {Array.from({ length: 10 }).map((_, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setCurrentIndex(idx)}
-                      className={cn(
-                        "h-7 w-7 rounded-lg text-[11px] font-bold transition",
-                        currentIndex === idx
-                          ? "bg-brand-700 text-white ring-2 ring-brand-500/40"
-                          : selectedAnswers[idx] !== -1
-                            ? "bg-amber-500/15 text-amber-700 dark:text-amber-400"
-                            : "bg-surface border border-line text-muted",
-                      )}
-                    >
-                      {idx + 1}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* REVIEW / RESULTS STATE */}
-          {mode === "REVIEW" && (
-            <div className="space-y-6">
-              {/* Score Header Card */}
-              <div className="rounded-3xl border border-line bg-surface p-6 sm:p-8 shadow-lift text-center space-y-4">
-                <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-500 shadow-glow">
-                  <Trophy className="h-8 w-8" />
-                </div>
-
-                <div>
-                  <h2 className="text-2xl font-black text-ink">
-                    {resultReview
-                      ? `You Scored ${resultReview.score} / 10!`
-                      : quizData?.score !== undefined
-                        ? `Today's Score: ${quizData.score} / 10`
-                        : "Challenge Completed!"}
-                  </h2>
-                  <p className="mt-1 text-xs text-muted">
-                    {resultReview?.score === 10
-                      ? "Flawless score! An absolute Ethiopian history master. 👑"
-                      : (resultReview?.score ?? quizData?.score ?? 0) >= 7
-                        ? "Terrific knowledge of Ethiopian heritage and traditions! 🇪🇹"
-                        : "Great effort! Review the historical facts below to learn more."}
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center justify-center gap-4 border-t border-line/60 pt-4 text-xs font-semibold">
-                  <div className="flex items-center gap-1.5 text-muted">
-                    <Clock className="h-4 w-4 text-brand-600" />
-                    <span>
-                      Time:{" "}
-                      <strong className="text-ink">
-                        {Math.round(
-                          (resultReview?.durationMs ?? quizData?.durationMs ?? 0) / 1000,
-                        )}
-                        s
-                      </strong>{" "}
-                      / 150s
-                    </span>
-                  </div>
-
-                  <div className="flex items-center gap-1.5 text-muted">
-                    <Medal className="h-4 w-4 text-amber-500" />
-                    <span>
-                      Rank Today:{" "}
-                      <strong className="text-ink">
-                        #{resultReview?.rank ?? quizData?.rank ?? "1"}
-                      </strong>{" "}
-                      of {resultReview?.totalParticipants ?? quizData?.totalParticipants ?? 1}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Detailed Questions & Explanations Review */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-bold uppercase tracking-wider text-muted">
-                  Questions & Answers Review
-                </h3>
-
-                {(resultReview?.review ?? quizData?.questions ?? []).map((q, idx) => {
-                  const isCorrect = q.isCorrect;
-                  return (
-                    <div
-                      key={q.id}
-                      className={cn(
-                        "rounded-3xl border p-5 sm:p-6 transition",
-                        isCorrect
-                          ? "border-emerald-500/30 bg-emerald-500/5"
-                          : "border-rose-500/30 bg-rose-500/5",
-                      )}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={cn(
-                              "inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                              isCorrect
-                                ? "bg-emerald-600 text-white"
-                                : "bg-rose-600 text-white",
-                            )}
-                          >
-                            {isCorrect ? <CheckCircle2 className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
-                          </span>
-                          <span className="text-xs font-bold text-ink">
-                            Question {idx + 1} · {q.category}
-                          </span>
-                        </div>
-                        <span
-                          className={cn(
-                            "rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider",
-                            isCorrect
-                              ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
-                              : "bg-rose-500/10 text-rose-700 dark:text-rose-400",
-                          )}
-                        >
-                          {isCorrect ? "Correct (+1)" : "Missed"}
-                        </span>
-                      </div>
-
-                      <p className="mt-3 text-sm font-semibold text-ink leading-relaxed">
-                        {q.prompt}
-                      </p>
-
-                      {/* Options breakdown */}
-                      <div className="mt-4 grid gap-2 sm:grid-cols-2 text-xs">
-                        {q.options.map((opt, optIdx) => {
-                          const isTheCorrectOption = optIdx === q.correctIndex;
-                          const wasUserChoice = optIdx === q.userAnswer;
-
-                          return (
-                            <div
-                              key={optIdx}
-                              className={cn(
-                                "flex items-center gap-2.5 rounded-xl border p-2.5 font-medium transition",
-                                isTheCorrectOption
-                                  ? "border-emerald-500 bg-emerald-500/15 text-emerald-900 dark:text-emerald-200 font-bold"
-                                  : wasUserChoice && !isTheCorrectOption
-                                    ? "border-rose-500 bg-rose-500/15 text-rose-900 dark:text-rose-200 line-through"
-                                    : "border-line/60 bg-surface text-muted",
-                              )}
-                            >
-                              <span className="text-[11px] font-bold">{String.fromCharCode(65 + optIdx)}.</span>
-                              <span className="flex-1">{opt}</span>
-                              {isTheCorrectOption && (
-                                <span className="text-[10px] font-black uppercase text-emerald-600">
-                                  Correct Answer
-                                </span>
-                              )}
-                              {wasUserChoice && !isTheCorrectOption && (
-                                <span className="text-[10px] font-black uppercase text-rose-600">
-                                  Your Choice
-                                </span>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-
-                      {/* Educational Explanation */}
-                      {q.explanation && (
-                        <div className="mt-4 rounded-2xl bg-surface-raised/40 p-3.5 text-xs text-muted border border-line/60">
-                          <p className="font-bold text-ink text-[11px] flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-                            Historical Context:
-                          </p>
-                          <p className="mt-1 leading-relaxed text-[11px] text-ink/80">
-                            {q.explanation}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Right Rail: Daily Leaderboard */}
-        <div className="space-y-6">
-          <div className="rounded-3xl border border-line bg-surface p-6 shadow-lift">
-            <div className="flex items-center justify-between border-b border-line pb-4">
-              <div className="flex items-center gap-2">
-                <Trophy className="h-5 w-5 text-amber-500" />
-                <h3 className="text-sm font-bold text-ink">Today's Leaderboard</h3>
-              </div>
-              <span className="rounded-full bg-raised px-2.5 py-0.5 text-[10px] font-semibold text-muted">
-                {leaderboard.length} played
-              </span>
-            </div>
-
-            {leaderboardLoading ? (
-              <div className="py-12 text-center">
-                <Spinner className="mx-auto h-6 w-6 text-brand-600" />
-                <p className="mt-2 text-xs text-muted">Updating leaderboard…</p>
-              </div>
-            ) : leaderboard.length === 0 ? (
-              <div className="py-10 text-center space-y-2">
-                <Award className="mx-auto h-10 w-10 text-muted/50" />
-                <p className="text-xs font-semibold text-ink">No scores posted yet today</p>
-                <p className="text-[11px] text-muted">Be the first to complete the quiz and claim Rank #1!</p>
-              </div>
-            ) : (
-              <div className="mt-4 divide-y divide-line/60">
-                {leaderboard.map((entry) => {
-                  const isFirst = entry.rank === 1;
-                  const isSecond = entry.rank === 2;
-                  const isThird = entry.rank === 3;
-
-                  return (
-                    <div
-                      key={entry.id}
-                      className={cn(
-                        "flex items-center justify-between py-3 transition",
-                        entry.user.id === user?.id && "bg-brand-500/5 -mx-2 px-2 rounded-xl",
-                      )}
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
-                        {/* Rank Badge */}
-                        <span
-                          className={cn(
-                            "flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-black",
-                            isFirst
-                              ? "bg-amber-400 text-zinc-950 shadow-sm"
-                              : isSecond
-                                ? "bg-slate-300 text-zinc-950"
-                                : isThird
-                                  ? "bg-amber-700 text-white"
-                                  : "bg-surface border border-line text-muted",
-                          )}
-                        >
-                          {isFirst ? "🥇" : isSecond ? "🥈" : isThird ? "🥉" : entry.rank}
-                        </span>
-
-                        <Avatar
-                          src={entry.user.avatarUrl}
-                          name={entry.user.displayName}
-                          username={entry.user.username}
-                          size="xs"
-                        />
-
-                        <div className="min-w-0 flex-1">
-                          <Link
-                            to={`/u/${entry.user.username}`}
-                            className="block truncate text-xs font-bold text-ink hover:underline"
-                          >
-                            {entry.user.displayName}
-                          </Link>
-                          <p className="truncate text-[10px] text-muted">@{entry.user.username}</p>
-                        </div>
-                      </div>
-
-                      {/* Score & Time */}
-                      <div className="text-right shrink-0 pl-2">
-                        <span className="block text-xs font-black text-ink">
-                          {entry.score} / 10
-                        </span>
-                        <span className="block text-[10px] text-muted font-medium">
-                          {entry.durationSeconds}s
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+      <div className="relative flex flex-col gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ring-1", categoryStyle(question.category))}>
+            {question.category}
+          </span>
+          <div className="flex items-center gap-2">
+            <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">
+              {position + 1} / {total}
+            </span>
+            <span
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold tabular-nums ring-1 transition",
+                lowOnTime
+                  ? "animate-pulse bg-rose-100 text-rose-700 ring-rose-200"
+                  : "bg-emerald-100 text-emerald-700 ring-emerald-200",
+              )}
+            >
+              <Clock className="h-4 w-4" aria-hidden />
+              {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
+            </span>
           </div>
         </div>
+
+        {/* Segmented progress: one block per question. */}
+        <div className="flex gap-1" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+          {Array.from({ length: total }).map((_, i) => (
+            <span
+              key={i}
+              className={cn(
+                "h-2 flex-1 rounded-full transition-all duration-300",
+                i <= position ? "bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400" : "bg-slate-200",
+              )}
+            />
+          ))}
+        </div>
+
+        {question.imageUrl && (
+          <img
+            src={question.imageUrl}
+            alt="Question image"
+            className="max-h-64 w-full rounded-2xl object-cover shadow-sm ring-1 ring-slate-200"
+            loading="lazy"
+          />
+        )}
+
+        <p className="text-lg font-bold leading-snug text-slate-900 sm:text-xl">{question.prompt}</p>
+
+        {question.type === "MATCHING" ? (
+          <MatchingInput question={question} answer={Array.isArray(answer) ? answer : []} onChange={onAnswer} disabled={advancing} />
+        ) : (
+          <div className="grid gap-2.5">
+            {question.options.map((option, i) => {
+              const selected = answer === i;
+              return (
+                <button
+                  key={`${question.id}-${i}`}
+                  type="button"
+                  onClick={() => onAnswer(i)}
+                  disabled={advancing}
+                  aria-pressed={selected}
+                  className={cn(
+                    "group flex min-h-14 items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-base font-medium transition-all duration-150 disabled:cursor-default",
+                    selected
+                      ? "border-transparent bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 text-white shadow-lg shadow-fuchsia-500/25"
+                      : "border-slate-200 bg-white text-slate-800 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50/60 hover:shadow-md",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black",
+                      selected
+                        ? "bg-white/25 text-white ring-1 ring-white/40"
+                        : "bg-gradient-to-br from-violet-100 to-fuchsia-100 text-violet-700 group-hover:from-violet-200 group-hover:to-fuchsia-200",
+                    )}
+                    aria-hidden
+                  >
+                    {OPTION_LETTERS[i] ?? i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1">{option}</span>
+                  {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-white" aria-hidden />}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
+            <Timer className="h-3.5 w-3.5" aria-hidden />
+            {secondsOnQuestion}s on this question
+          </span>
+          <span className={cn("font-semibold", advancing ? "text-fuchsia-700" : "text-muted")}>
+            {advancing ? "Moving to the next question…" : "Answers advance automatically"}
+          </span>
+        </div>
       </div>
-        </>
-      )}
+    </Card>
+  );
+}
+
+function MatchingInput({
+  question,
+  answer,
+  onChange,
+  disabled,
+}: {
+  question: QuizQuestion;
+  answer: number[];
+  onChange: (value: Answer) => void;
+  disabled?: boolean;
+}) {
+  const choices = useMemo(() => question.matchOptions, [question.matchOptions]);
+  return (
+    <div className="flex flex-col gap-3">
+      {question.matchLefts.map((left, i) => (
+        <label
+          key={`${question.id}-left-${i}`}
+          className="flex flex-col gap-1.5 rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-3 text-sm font-semibold text-slate-800 transition focus-within:border-fuchsia-300 focus-within:bg-white"
+        >
+          <span className="flex items-center gap-2">
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 text-[11px] font-black text-white" aria-hidden>
+              {i + 1}
+            </span>
+            {left}
+          </span>
+          <select
+            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900 outline-none focus:border-fuchsia-500"
+            value={answer[i] ?? -1}
+            disabled={disabled}
+            onChange={(e) => {
+              const next = [...answer];
+              next[i] = Number(e.target.value);
+              onChange(next);
+            }}
+          >
+            <option value={-1}>Choose…</option>
+            {choices.map((choice, j) => (
+              <option key={`${question.id}-choice-${j}`} value={j}>
+                {choice}
+              </option>
+            ))}
+          </select>
+        </label>
+      ))}
     </div>
   );
 }

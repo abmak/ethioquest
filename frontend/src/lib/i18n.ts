@@ -495,6 +495,17 @@ export function tt(phrase: string): string {
   return phrases[activeLang]?.[phrase] ?? phrase;
 }
 
+/**
+ * Translate a sentence that carries `{name}` placeholders, then fill them in.
+ * Lets copy with a price or a count stay a single translatable phrase instead
+ * of being glued together from fragments in a template literal.
+ */
+export function ttp(phrase: string, vars: Record<string, string | number>): string {
+  return tt(phrase).replace(/\{(\w+)\}/g, (match, name: string) =>
+    vars[name] === undefined ? match : String(vars[name]),
+  );
+}
+
 export function translate(key: string, lang: SupportedLang = "en", fallback?: string): string {
   const dictionary = translations[lang] || translations.en;
   const english = translations.en[key] ?? fallback ?? key;
