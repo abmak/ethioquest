@@ -33,7 +33,11 @@ ENABLED=/etc/nginx/sites-enabled/ethioquest-domain
 CERTBOT_IMAGE=certbot/certbot:latest
 BACKUP="/root/ethioquest-domain-backup-$(date +%Y%m%d%H%M%S)"
 
+# Run from the deploy directory, wherever the script itself was downloaded to.
 APPDIR="$(cd "$(dirname "$0")" && pwd)"
+if [ ! -f "$APPDIR/docker-compose.prod.yml" ] && [ -f "$HOME/ethioquest/docker-compose.prod.yml" ]; then
+  APPDIR="$HOME/ethioquest"
+fi
 cd "$APPDIR"
 [ -f docker-compose.prod.yml ] || { echo "$APPDIR does not look like the app directory" >&2; exit 1; }
 
@@ -181,15 +185,28 @@ if [ -z "$CERT" ]; then
 
   echo "• Requesting a certificate from Let's Encrypt"
   if command -v certbot >/dev/null 2>&1; then
-    certbot certonly --webroot -w "$WEBROOT" -d "$DOMAIN" --cert-name "$DOMAIN" \
-      --non-interactive --agree-tos --register-unsafely-without-email --keep-until-expiring
+    issue() {
+      certbot certonly --webroot -w "$WEBROOT" -d "$DOMAIN" --cert-name "$DOMAIN" \
+        --non-interactive --agree-tos --register-unsafely-without-email --keep-until-expiring
+    }
   else
-    docker run --rm \
-      -v /etc/letsencrypt:/etc/letsencrypt \
-      -v "$WEBROOT":/var/www/acme \
-      "$CERTBOT_IMAGE" certonly --webroot -w /var/www/acme -d "$DOMAIN" \
-      --cert-name "$DOMAIN" --non-interactive --agree-tos \
-      --register-unsafely-without-email --keep-until-expiring
+    issue() {
+      docker run --rm \
+        -v /etc/letsencrypt:/etc/letsencrypt \
+        -v "$WEBROOT":/var/www/acme \
+        "$CERTBOT_IMAGE" certonly --webroot -w /var/www/acme -d "$DOMAIN" \
+        --cert-name "$DOMAIN" --non-interactive --agree-tos \
+        --register-unsafely-without-email --keep-until-expiring
+    }
+  fi
+
+  if ! issue; then
+    echo >&2
+    echo "Let's Encrypt could not validate the name. HTTP-01 needs port 80 open to the" >&2
+    echo "internet and $DOMAIN pointing here; check with:" >&2
+    echo "  curl -sv http://$DOMAIN/.well-known/acme-challenge/probe" >&2
+    echo "A host whose port 80 is closed needs a DNS-01 certificate instead." >&2
+    exit 1
   fi
   CERT_DIR="/etc/letsencrypt/live/$DOMAIN"
   CERT="$CERT_DIR/fullchain.pem"
