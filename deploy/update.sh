@@ -16,7 +16,10 @@ if command -v flock >/dev/null 2>&1; then
   flock -n 9 || exit 0
 fi
 
-RAW="https://raw.githubusercontent.com/abmak/ethioquest/main/deploy"
+# The API endpoint honours Cache-Control; raw.githubusercontent.com serves a
+# stale copy of a file for minutes after a push, and a stale compose file once
+# started the retired stack beside the current one.
+RAW="https://api.github.com/repos/abmak/ethioquest/contents/deploy"
 # A host that needs to differ from the published images (for example code
 # mounted over a base image) keeps its additions in docker-compose.override.yml
 # next to this file; the compose file from main still drives the rest.
@@ -38,7 +41,10 @@ set_value() {
 
 # Follow the repository's compose file; a stale copy would roll the stack back.
 tmp="$(mktemp)"
-if curl -fsS --max-time 30 "$RAW/docker-compose.prod.yml" -o "$tmp"; then
+if curl -fsS --max-time 30 \
+  -H "Accept: application/vnd.github.raw" \
+  -H "X-GitHub-Api-Version: 2022-11-28" \
+  "$RAW/docker-compose.prod.yml?ref=main" -o "$tmp"; then
   if ! cmp -s "$tmp" docker-compose.prod.yml; then
     mv "$tmp" docker-compose.prod.yml
     echo "$(date -Is) compose file updated from main"
