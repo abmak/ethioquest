@@ -45,7 +45,7 @@ export interface QuizQuota {
   exhausted: boolean;
 }
 
-export type RetryMethod = "TELEBIRR" | "CBE_BIRR" | "CASH";
+export type RetryMethod = "TELEBIRR" | "AIRTIME";
 
 export interface QuizPaymentSummary {
   playIndex: number;
