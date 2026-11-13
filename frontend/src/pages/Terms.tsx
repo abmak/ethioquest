@@ -53,9 +53,9 @@ export function TermsPage() {
             <h2 className="font-display text-base font-bold text-ink">3. Playing the quiz</h2>
             <p>
               Each day has ten questions. Every member gets one free play per day. Further attempts on the same day
-              cost ETB 3 each, paid by Telebirr, CBE Birr or cash, and are not refundable once the attempt has
-              started. Only completed attempts count towards the leaderboard, and a day, week or month is measured in
-              Ethiopian time (UTC+3).
+              cost ETB 3 each, paid by Telebirr or airtime, and are not refundable once the attempt has started. Only
+              completed attempts count towards the leaderboard, and a day, week or month is measured in Ethiopian time
+              (UTC+3).
             </p>
           </section>
 

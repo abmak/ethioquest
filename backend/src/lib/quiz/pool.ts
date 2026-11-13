@@ -5,15 +5,17 @@ import { prisma } from "../prisma";
 import { logger } from "../logger";
 import { PLACE_QUIZ_ENTRIES } from "../place-quiz-data";
 
-export const POOL_TARGET = 50_000;
-const SEED_VERSION = "pool-v2-ethiopian-bank";
+export const POOL_TARGET = 100_000;
+const SEED_VERSION = "pool-v3-ethiopian-second-edition";
 const IMPORT_PREFIX = "sheet:";
 
 /**
- * The supplied Ethiopian history, culture and heritage question bank, one JSON
- * row per line: [id, category, prompt, A, B, C, D, correctIndex]. It is stored
+ * The supplied Ethiopian history, culture and heritage question banks — the
+ * original edition and the second edition imported after it — one JSON row per
+ * line: [id, category, prompt, A, B, C, D, correctIndex]. They are stored
  * gzipped in the repository and unpacked on boot, so the API needs no
- * spreadsheet dependency.
+ * spreadsheet dependency. Ids are continuous across the editions, so the
+ * `sheet:<id>` keys never collide.
  */
 const BANK_FILE = path.resolve(__dirname, "../../../prisma/data/quiz/questions.jsonl.gz");
 

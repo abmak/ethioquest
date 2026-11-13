@@ -2302,6 +2302,8 @@ function AnswersPanel() {
 
 const RETRY_METHOD_LABELS: Record<string, string> = {
   TELEBIRR: "Telebirr",
+  AIRTIME: "Airtime",
+  // Retired methods, still labelled so older payments stay readable.
   CBE_BIRR: "CBE Birr",
   CASH: "Cash",
 };

@@ -17,7 +17,7 @@ const TIME_LIMIT_MS = 150_000;
 /** One free play every day, then up to nine retries at 3 ETB each. */
 export const MAX_PLAYS_PER_DAY = 10;
 export const RETRY_PRICE_ETB = 3;
-const RETRY_METHODS = ["TELEBIRR", "CBE_BIRR", "CASH"] as const;
+const RETRY_METHODS = ["TELEBIRR", "AIRTIME"] as const;
 
 const ADDIS = "Africa/Addis_Ababa";
 
@@ -282,9 +282,9 @@ const retrySchema = z.object({
 });
 
 /**
- * Starts a paid retry. The member pays the 3 ETB outside the app (Telebirr, CBE
- * Birr or cash) and confirms it here; the confirmation is stored with the play
- * so staff can review every retry.
+ * Starts a paid retry. The member pays the 3 ETB outside the app (Telebirr or
+ * airtime) and confirms it here; the confirmation is stored with the play so
+ * staff can review every retry.
  */
 quizRouter.post(
   "/daily/retry",

@@ -461,12 +461,17 @@ export function QuizPage() {
 
 const PAYMENT_METHODS: { value: RetryMethod; label: string; hint: string }[] = [
   { value: "TELEBIRR", label: "Telebirr", hint: "Mobile money transfer" },
-  { value: "CBE_BIRR", label: "CBE Birr", hint: "CBE wallet transfer" },
-  { value: "CASH", label: "Cash", hint: "Give 3 ETB to the host" },
+  { value: "AIRTIME", label: "Airtime", hint: "Deducted from your airtime balance" },
 ];
 
+/** Methods that are no longer offered, kept so older payments still read clearly. */
+const RETIRED_PAYMENT_LABELS: Record<string, string> = {
+  CBE_BIRR: "CBE Birr",
+  CASH: "Cash",
+};
+
 function paymentLabel(method: string): string {
-  return PAYMENT_METHODS.find((m) => m.value === method)?.label ?? method;
+  return PAYMENT_METHODS.find((m) => m.value === method)?.label ?? RETIRED_PAYMENT_LABELS[method] ?? method;
 }
 
 /** Today's plays, the best result so far and the paid retry action. */
@@ -619,7 +624,7 @@ function RetryDialog({
 
         <fieldset className="flex flex-col gap-2">
           <legend className="mb-1 text-[11px] font-bold uppercase tracking-wide text-muted">How did you pay?</legend>
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 sm:grid-cols-2">
             {PAYMENT_METHODS.map((option) => (
               <button
                 key={option.value}
