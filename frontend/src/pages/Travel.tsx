@@ -43,14 +43,14 @@ const CATEGORY_OPTIONS: { value: DestinationCategory | ""; label: string }[] = [
 
 /** Each category keeps its own colour so the catalogue reads at a glance. */
 const CATEGORY_STYLES: Record<DestinationCategory, { chip: string; tile: string; label: string }> = {
-  HISTORY: { chip: "bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200", tile: "from-amber-500 to-leaf-600", label: "History" },
+  HISTORY: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-leaf-600", label: "History" },
   HERITAGE: { chip: "bg-rose-100 text-rose-900 dark:bg-rose-500/15 dark:text-rose-200", tile: "from-rose-500 to-leaf-600", label: "Heritage" },
-  NATURE: { chip: "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-200", tile: "from-emerald-500 to-leaf-600", label: "Nature" },
-  WILDLIFE: { chip: "bg-lime-100 text-lime-900 dark:bg-lime-500/15 dark:text-lime-200", tile: "from-lime-500 to-green-600", label: "Wildlife" },
+  NATURE: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-leaf-600", label: "Nature" },
+  WILDLIFE: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-green-600", label: "Wildlife" },
   ADVENTURE: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-red-600", label: "Adventure" },
   CULTURE: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-leaf-600", label: "Culture" },
   CITY: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-leaf-600", label: "City" },
-  FOOD: { chip: "bg-yellow-100 text-yellow-900 dark:bg-yellow-500/15 dark:text-yellow-200", tile: "from-yellow-400 to-amber-600", label: "Food" },
+  FOOD: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-400 to-leaf-600", label: "Food" },
 };
 
 function PlaceImage({
@@ -100,7 +100,7 @@ function DestinationCard({ destination }: { destination: DestinationSummary }) {
             {tt(style.label)}
           </span>
           {destination.featured && (
-            <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-leaf-500 px-2.5 py-1 text-[11px] font-bold text-white shadow">
+            <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-leaf-600 to-leaf-700 px-2.5 py-1 text-[11px] font-bold text-white shadow">
               <Sparkles className="h-3 w-3" aria-hidden /> Featured
             </span>
           )}
@@ -112,7 +112,7 @@ function DestinationCard({ destination }: { destination: DestinationSummary }) {
                 {destination.region}
               </p>
             </div>
-            <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-bold text-amber-700">
+            <span className="flex shrink-0 items-center gap-1 rounded-full bg-white/95 px-2 py-1 text-xs font-bold text-leaf-700">
               {destination.reviewCount > 0 ? (
                 <>
                   <Star className="h-3.5 w-3.5 fill-current" aria-hidden />
@@ -190,7 +190,7 @@ function RecommendationCard({ destination }: { destination: Recommendation }) {
         {destination.reasons.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {destination.reasons.map((reason) => (
-              <li key={reason} className="rounded-full bg-gradient-to-r from-leaf-50 to-amber-50 px-2.5 py-1 text-[11px] font-bold text-leaf-800 ring-1 ring-leaf-200/70 dark:from-leaf-500/10 dark:to-amber-500/10 dark:text-leaf-200 dark:ring-leaf-400/20">
+              <li key={reason} className="rounded-full bg-gradient-to-r from-leaf-50 to-leaf-50 px-2.5 py-1 text-[11px] font-bold text-leaf-800 ring-1 ring-leaf-200/70 dark:from-leaf-500/10 dark:to-leaf-500/10 dark:text-leaf-200 dark:ring-leaf-400/20">
                 {reason}
               </li>
             ))}
@@ -375,7 +375,7 @@ function PreferenceFinder() {
             </select>
           </label>
         </div>
-        <Button type="submit" loading={busy} className="bg-gradient-to-br from-leaf-600 to-emerald-700">
+        <Button type="submit" loading={busy} className="bg-gradient-to-br from-leaf-600 to-leaf-700">
           Show matching places
         </Button>
       </form>
@@ -399,7 +399,7 @@ function PreferenceFinder() {
             Search
           </Button>
         </form>
-        {startError && <p role="alert" className="text-sm text-red-600">{startError}</p>}
+        {startError && <p role="alert" className="text-sm text-rose-600">{startError}</p>}
         {startMatches && startMatches.length === 0 && <p className="text-sm text-muted">No matching places found in Ethiopia.</p>}
         {startMatches && startMatches.length > 0 && (
           <ul className="flex flex-col gap-1">
@@ -433,7 +433,7 @@ function PreferenceFinder() {
         />
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
       {results && results.length === 0 && <p className="text-sm text-muted">No places matched. Try fewer filters.</p>}
       {results && results.length > 0 && (
         <div className="flex flex-col gap-3">
@@ -547,7 +547,7 @@ export function TravelPage() {
         </div>
       </div>
 
-      {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+      {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
       {!destinations && !error && <PageLoader />}
 
       {destinations && destinations.length === 0 && (
@@ -727,10 +727,10 @@ function RoutePlanner({ destination }: { destination: Destination }) {
           <span className="rounded-full bg-leaf-100 px-3 py-1.5 text-leaf-800 dark:bg-leaf-500/15 dark:text-leaf-200">
             {route.distanceKm} km
           </span>
-          <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
+          <span className="rounded-full bg-leaf-100 px-3 py-1.5 text-leaf-800 dark:bg-leaf-500/15 dark:text-leaf-200">
             about {formatDriveTime(route.durationSeconds)}
           </span>
-          <span className="rounded-full bg-amber-100 px-3 py-1.5 text-amber-800 dark:bg-amber-500/15 dark:text-amber-200">
+          <span className="rounded-full bg-leaf-100 px-3 py-1.5 text-leaf-800 dark:bg-leaf-500/15 dark:text-leaf-200">
             {route.steps.length} steps
           </span>
         </div>
@@ -809,7 +809,7 @@ export function DestinationPage() {
   if (error) {
     return (
       <div className="flex flex-col items-start gap-3">
-        <p role="alert" className="text-sm text-red-600">{error}</p>
+        <p role="alert" className="text-sm text-rose-600">{error}</p>
         <Link to="/travel" className="text-sm font-semibold text-brand-700">Back to Places to Visit</Link>
       </div>
     );
@@ -840,11 +840,11 @@ export function DestinationPage() {
               {destination.city ? ` · ${destination.city}` : ""}
             </span>
             {destination.reviewCount > 0 ? (
-              <span className="flex items-center gap-1 text-amber-200">
+              <span className="flex items-center gap-1 text-leaf-200">
                 <Star className="h-4 w-4 fill-current" aria-hidden /> {destination.rating.toFixed(1)} ({destination.reviewCount} reviews)
               </span>
             ) : (
-              <span className="flex items-center gap-1 text-amber-200">
+              <span className="flex items-center gap-1 text-leaf-200">
                 <Sparkles className="h-4 w-4" aria-hidden /> New guide
               </span>
             )}
@@ -891,7 +891,7 @@ export function DestinationPage() {
           <InfoBlock title="What is there" icon={Mountain}>
             <ul className="flex flex-wrap gap-2">
               {destination.highlights.map((item) => (
-                <li key={item} className="rounded-full bg-gradient-to-r from-emerald-50 to-leaf-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200/70 dark:from-emerald-500/10 dark:to-leaf-500/10 dark:text-emerald-200 dark:ring-emerald-400/20">
+                <li key={item} className="rounded-full bg-gradient-to-r from-leaf-50 to-leaf-50 px-3 py-1.5 text-xs font-semibold text-leaf-800 ring-1 ring-leaf-200/70 dark:from-leaf-500/10 dark:to-leaf-500/10 dark:text-leaf-200 dark:ring-leaf-400/20">
                   {item}
                 </li>
               ))}
@@ -911,7 +911,7 @@ export function DestinationPage() {
         </Card>
 
         <div className="flex flex-col gap-3">
-          <Card className="flex flex-col gap-3 border-t-4 border-t-amber-400 p-4">
+          <Card className="flex flex-col gap-3 border-t-4 border-t-leaf-400 p-4">
             <InfoBlock title="Best time to visit" icon={CalendarDays}>
               <p className="text-sm font-medium text-ink">{destination.bestTime}</p>
             </InfoBlock>

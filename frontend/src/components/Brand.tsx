@@ -12,14 +12,14 @@ export function BrandMark({ className }: { className?: string }) {
     <svg viewBox="0 0 64 64" className={cn("brand-mark overflow-visible", className)} aria-hidden>
       <defs>
         <linearGradient id={`${id}-badge`} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#0f766e" />
-          <stop offset="38%" stopColor="#16a34a" />
-          <stop offset="72%" stopColor="#f59e0b" />
-          <stop offset="100%" stopColor="#db2777" />
+          <stop offset="0%" stopColor="#0f6b3a" />
+          <stop offset="38%" stopColor="#2cb56a" />
+          <stop offset="72%" stopColor="#55cf85" />
+          <stop offset="100%" stopColor="#90ee90" />
         </linearGradient>
         <linearGradient id={`${id}-star`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#fff7d6" />
-          <stop offset="100%" stopColor="#fbbf24" />
+          <stop offset="0%" stopColor="#eafcf1" />
+          <stop offset="100%" stopColor="#78d79c" />
         </linearGradient>
         <radialGradient id={`${id}-glow`} cx="0.3" cy="0.2" r="0.8">
           <stop offset="0%" stopColor="#ffffff" stopOpacity="0.55" />
@@ -30,21 +30,21 @@ export function BrandMark({ className }: { className?: string }) {
       {/* Soft halo behind the badge. */}
       <circle cx="32" cy="32" r="27" fill={`url(#${id}-glow)`} />
 
-      {/* Rotating dashed orbit in the Ethiopian palette. */}
+      {/* Rotating dashed orbit in the brand green palette. */}
       <g className="brand-orbit">
         <circle
           cx="32"
           cy="32"
           r="29"
           fill="none"
-          stroke="#f59e0b"
-          strokeOpacity="0.55"
+          stroke="#2cb56a"
+          strokeOpacity="0.6"
           strokeWidth="1.6"
           strokeDasharray="3 7"
           strokeLinecap="round"
         />
-        <circle cx="32" cy="3" r="2.4" fill="#db2777" />
-        <circle cx="32" cy="61" r="1.8" fill="#0ea5e9" />
+        <circle cx="32" cy="3" r="2.4" fill="#90ee90" />
+        <circle cx="32" cy="61" r="1.8" fill="#55cf85" />
       </g>
 
       {/* Gem badge: a rounded diamond, rotated a few degrees. */}
@@ -71,9 +71,9 @@ export function BrandMark({ className }: { className?: string }) {
         </g>
 
         {/* Coffee bean core: the shared table at the heart of the brand. */}
-        <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="#3b1f12" />
-        <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="none" stroke="#fde68a" strokeOpacity="0.65" strokeWidth="1.2" />
-        <path d="M32 22c-4 5-4 15 0 20" stroke="#fde68a" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.85" />
+        <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="#062e1a" />
+        <ellipse cx="32" cy="32" rx="9.5" ry="12" fill="none" stroke="#90ee90" strokeOpacity="0.7" strokeWidth="1.2" />
+        <path d="M32 22c-4 5-4 15 0 20" stroke="#90ee90" strokeWidth="1.6" strokeLinecap="round" fill="none" opacity="0.9" />
         <circle cx="27.5" cy="26.5" r="2" fill="#ffffff" opacity="0.35" />
       </g>
 

@@ -112,7 +112,7 @@ export function TravelMap({
     if (route && route.length > 1) {
       // A white casing under the coloured line keeps it readable on busy tiles.
       L.polyline(route, { color: "#ffffff", weight: 10, opacity: 0.85, lineCap: "round", lineJoin: "round" }).addTo(layer);
-      L.polyline(route, { color: "#0284c7", weight: 5.5, opacity: 1, lineCap: "round", lineJoin: "round" }).addTo(layer);
+      L.polyline(route, { color: "#1a8f52", weight: 5.5, opacity: 1, lineCap: "round", lineJoin: "round" }).addTo(layer);
       points.push(...route);
     }
 

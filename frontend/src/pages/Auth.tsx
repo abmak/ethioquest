@@ -92,7 +92,7 @@ export function AuthPage({ mode }: AuthPageProps) {
         </div>
 
         <p className="relative z-10 text-xs text-white/60">Made in Ethiopia · Amharic, Afaan Oromoo, Tigrinya and English</p>
-        <span className="pointer-events-none absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-amber-300/25 blur-3xl" aria-hidden />
+        <span className="pointer-events-none absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-leaf-300/25 blur-3xl" aria-hidden />
       </aside>
 
       <main className="flex items-center justify-center px-4 py-10">

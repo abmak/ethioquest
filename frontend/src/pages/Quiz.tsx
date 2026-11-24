@@ -55,10 +55,10 @@ function answeredCount(question: QuizQuestion, answer: Answer | undefined): bool
 }
 
 const CATEGORY_STYLES: Record<string, string> = {
-  HISTORY: "bg-amber-100 text-amber-800 ring-amber-200",
+  HISTORY: "bg-leaf-100 text-leaf-800 ring-leaf-200",
   HERITAGE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
-  NATURE: "bg-emerald-100 text-emerald-800 ring-emerald-200",
-  WILDLIFE: "bg-lime-100 text-lime-800 ring-lime-200",
+  NATURE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
+  WILDLIFE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
   ADVENTURE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
   CULTURE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
   CITY: "bg-leaf-100 text-leaf-800 ring-leaf-200",
@@ -371,8 +371,8 @@ export function QuizPage() {
       </section>
 
       {result && (
-        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-emerald-600 via-leaf-500 to-leaf-500 p-6 text-white shadow-[0_24px_70px_-32px_rgba(5,150,105,0.9)]">
-          <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-lime-300/30 blur-2xl" aria-hidden />
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-leaf-700 via-leaf-600 to-leaf-600 p-6 text-white shadow-[0_24px_70px_-32px_rgba(5,150,105,0.9)]">
+          <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-leaf-300/30 blur-2xl" aria-hidden />
           <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
             <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
               <span className="inline-flex items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.2em] ring-1 ring-white/30">
@@ -388,11 +388,11 @@ export function QuizPage() {
             </div>
             <div
               className="grid h-36 w-36 shrink-0 place-items-center rounded-full"
-              style={{ background: `conic-gradient(#facc15 ${scorePercent}%, rgba(255,255,255,0.2) 0)` }}
+              style={{ background: `conic-gradient(#90ee90 ${scorePercent}%, rgba(255,255,255,0.2) 0)` }}
               role="img"
               aria-label={`Score ${result.score} out of 100`}
             >
-              <div className="grid h-28 w-28 place-items-center rounded-full bg-emerald-900/45 backdrop-blur">
+              <div className="grid h-28 w-28 place-items-center rounded-full bg-leaf-900/45 backdrop-blur">
                 <p className="text-3xl font-black leading-none">{result.score}</p>
                 <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">of 100</p>
               </div>
@@ -433,7 +433,7 @@ export function QuizPage() {
       )}
 
       {inProgress && !result && (
-        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-leaf-700 via-leaf-600 to-leaf-500 p-5 text-white shadow-lift">
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-leaf-800 via-leaf-700 to-leaf-600 p-5 text-white shadow-lift">
           <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" aria-hidden />
           <div className="relative flex flex-wrap items-center justify-between gap-3">
             <div className="min-w-0">
@@ -529,12 +529,12 @@ function DailyPlaysCard({
   const byPlay = new Map(payments.map((p) => [p.playIndex, p]));
 
   return (
-    <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-amber-50 via-white to-leaf-50 p-5 ring-1 ring-leaf-100 sm:p-6">
+    <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-leaf-50 via-white to-leaf-50 p-5 ring-1 ring-leaf-100 sm:p-6">
       <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-leaf-200/40 blur-2xl" aria-hidden />
       <div className="relative flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-leaf-600 to-leaf-500 text-white shadow-lg shadow-leaf-500/25">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-leaf-600 to-leaf-700 text-white shadow-lg shadow-leaf-500/25">
               <RotateCcw className="h-5 w-5" aria-hidden />
             </span>
             <div>
@@ -562,8 +562,8 @@ function DailyPlaysCard({
         </div>
 
         {best && (
-          <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-amber-200">
-            <Trophy className="h-5 w-5 shrink-0 text-amber-500" aria-hidden />
+          <div className="flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-leaf-200">
+            <Trophy className="h-5 w-5 shrink-0 text-leaf-500" aria-hidden />
             <p className="text-sm text-slate-700">
               Best today <strong className="font-black text-slate-900">{best.score}/100</strong> · {best.correctCount}/
               {best.totalQuestions} correct · {formatDuration(best.durationMs)}
@@ -580,14 +580,14 @@ function DailyPlaysCard({
                 className="flex items-center justify-between gap-3 rounded-xl bg-white/80 px-3 py-2 ring-1 ring-slate-200"
               >
                 <span className="flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-700">
-                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-leaf-500" aria-hidden />
                   Play {play.playIndex + 1}
                   {play.paid ? (
                     <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-leaf-700">
                       {quota.retryPriceEtb} ETB · {payment ? paymentLabel(payment.method) : "paid"}
                     </span>
                   ) : (
-                    <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-emerald-700">
+                    <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-leaf-700">
                       Free
                     </span>
                   )}
@@ -709,7 +709,7 @@ function RetryDialog({
           />
         </label>
 
-        <p className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900 ring-1 ring-amber-200">
+        <p className="flex items-start gap-2 rounded-xl bg-leaf-50 px-3 py-2 text-xs font-medium text-leaf-900 ring-1 ring-leaf-200">
           <Banknote className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           Pay before confirming. Your confirmation is saved with the play so the Ethio Quest team can review it.
         </p>
@@ -779,7 +779,7 @@ function PlayStage({
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -left-24 -top-28 h-72 w-72 rounded-full bg-leaf-300/50 blur-3xl" />
         <div className="absolute -right-24 top-1/4 h-80 w-80 rounded-full bg-leaf-200/70 blur-3xl" />
-        <div className="absolute -bottom-24 left-1/4 h-72 w-72 rounded-full bg-emerald-200/50 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/4 h-72 w-72 rounded-full bg-leaf-200/50 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
@@ -944,7 +944,7 @@ function ResultStage({ result, times, best, onDone }: ResultStageProps) {
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
         <div className="absolute -left-20 -top-24 h-72 w-72 rounded-full bg-leaf-300/50 blur-3xl" />
         <div className="absolute -right-24 top-1/4 h-80 w-80 rounded-full bg-leaf-200/70 blur-3xl" />
-        <div className="absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-emerald-200/50 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-leaf-200/50 blur-3xl" />
       </div>
 
       <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 px-4 py-8">
@@ -1029,7 +1029,7 @@ function MatchingInput({
           className="flex flex-col gap-1.5 rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-3 text-sm font-semibold text-slate-800 transition focus-within:border-leaf-300 focus-within:bg-white"
         >
           <span className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-leaf-500 to-emerald-500 text-[11px] font-black text-white" aria-hidden>
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-leaf-600 to-leaf-700 text-[11px] font-black text-white" aria-hidden>
               {i + 1}
             </span>
             {left}

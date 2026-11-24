@@ -130,7 +130,7 @@ export function FollowButton({
           compact && "min-h-8 px-2.5",
           followed
             ? "border border-leaf-300 bg-leaf-50 text-leaf-700 hover:border-rose-300 hover:text-rose-600 dark:border-leaf-400/30 dark:bg-leaf-500/10 dark:text-leaf-200"
-            : "bg-gradient-to-br from-leaf-600 to-leaf-500 text-white shadow-sm hover:shadow-md",
+            : "bg-gradient-to-br from-leaf-700 to-leaf-600 text-white shadow-sm hover:shadow-md",
         )}
       >
         {followed ? <UserRoundCheck className="h-3.5 w-3.5" aria-hidden /> : <UserPlus className="h-3.5 w-3.5" aria-hidden />}
@@ -265,7 +265,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           "max-w-[80%] rounded-2xl text-sm shadow-sm",
           hasMedia ? "p-2" : "px-3.5 py-2",
           message.mine
-            ? "rounded-br-md bg-gradient-to-br from-leaf-600 to-leaf-500 text-white"
+            ? "rounded-br-md bg-gradient-to-br from-leaf-700 to-leaf-600 text-white"
             : "rounded-bl-md border border-line bg-surface text-ink",
         )}
       >
@@ -899,7 +899,7 @@ export function ProfilePage() {
                   {story.imageUrls[0] ? (
                     <img src={story.imageUrls[0]} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
                   ) : (
-                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-amber-300">
+                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-leaf-300">
                       <Sparkles className="h-8 w-8 text-white/80" aria-hidden />
                     </div>
                   )}

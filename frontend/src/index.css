@@ -48,7 +48,7 @@
   .dark body {
     background-image:
       radial-gradient(70rem 44rem at 100% -12%, rgb(31 163 87 / 0.08), transparent 60%),
-      radial-gradient(55rem 40rem at -12% 4%, rgb(233 185 73 / 0.04), transparent 55%);
+      radial-gradient(55rem 40rem at -12% 4%, rgb(144 238 144 / 0.06), transparent 55%);
   }
 
   h1,
@@ -59,7 +59,7 @@
   }
 
   ::selection {
-    background: rgb(233 185 73 / 0.4);
+    background: rgb(144 238 144 / 0.55);
   }
 
   :focus-visible {
@@ -112,7 +112,7 @@
     @apply relative overflow-hidden rounded-2xl border border-line bg-surface;
     background-image:
       radial-gradient(42rem 24rem at 100% 0%, rgb(15 107 58 / 0.06), transparent 60%),
-      radial-gradient(30rem 20rem at 0% 100%, rgb(233 185 73 / 0.07), transparent 62%);
+      radial-gradient(30rem 20rem at 0% 100%, rgb(144 238 144 / 0.18), transparent 62%);
     box-shadow:
       0 1px 2px rgb(16 24 20 / 0.04),
       0 12px 32px -24px rgb(16 24 20 / 0.22);
@@ -121,7 +121,7 @@
   .dark .panel {
     background-image:
       radial-gradient(42rem 24rem at 100% 0%, rgb(31 163 87 / 0.12), transparent 60%),
-      radial-gradient(30rem 20rem at 0% 100%, rgb(233 185 73 / 0.05), transparent 62%);
+      radial-gradient(30rem 20rem at 0% 100%, rgb(144 238 144 / 0.08), transparent 62%);
   }
 
   .btn {
@@ -150,14 +150,14 @@
   }
 
   .btn-secondary {
-    @apply btn border border-line bg-surface text-ink;
+    @apply btn border border-leaf-200 bg-leaf-50 text-leaf-950 dark:border-leaf-400/25 dark:bg-leaf-500/10 dark:text-leaf-100;
     box-shadow:
       0 1px 2px rgb(16 24 20 / 0.05),
       inset 0 1px 0 rgb(255 255 255 / 0.6);
   }
 
   .btn-secondary:hover {
-    @apply border-line bg-raised/80 text-ink;
+    @apply border-leaf-300 bg-leaf-100 text-leaf-950 dark:border-leaf-400/40 dark:bg-leaf-500/20 dark:text-leaf-50;
   }
 
   .dark .btn-secondary {
@@ -165,7 +165,7 @@
   }
 
   .btn-ghost {
-    @apply btn text-muted hover:bg-raised hover:text-ink;
+    @apply btn text-muted hover:bg-leaf-50 hover:text-leaf-950 dark:hover:bg-leaf-500/10 dark:hover:text-leaf-50;
   }
 
   .btn-danger {
@@ -220,8 +220,8 @@
   .eth-hero-glow {
     background-image:
       radial-gradient(60% 70% at 8% 0%, rgb(15 107 58 / 0.1), transparent 62%),
-      radial-gradient(50% 60% at 96% 10%, rgb(233 185 73 / 0.16), transparent 64%),
-      radial-gradient(40% 50% at 55% 100%, rgb(200 16 46 / 0.05), transparent 70%);
+      radial-gradient(50% 60% at 96% 10%, rgb(144 238 144 / 0.3), transparent 64%),
+      radial-gradient(40% 50% at 55% 100%, rgb(85 207 133 / 0.16), transparent 70%);
   }
 
   /* Faint blueprint grid — used behind marketing and empty surfaces. */
@@ -300,14 +300,14 @@
      Ethio Quest brand system: animated mark and moving-gradient wordmark.
      --------------------------------------------------------------------- */
   .brand-mark {
-    filter: drop-shadow(0 6px 18px rgb(15 118 110 / 0.28));
+    filter: drop-shadow(0 6px 18px rgb(26 143 82 / 0.32));
     transition: transform 350ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 350ms ease;
   }
 
   .brand-lockup:hover .brand-mark,
   .brand-mark:hover {
     transform: scale(1.07) rotate(-3deg);
-    filter: drop-shadow(0 8px 26px rgb(219 39 119 / 0.35));
+    filter: drop-shadow(0 8px 26px rgb(44 181 106 / 0.42));
   }
 
   .brand-float {
@@ -339,8 +339,8 @@
   }
 
   .brand-underline {
-    background: linear-gradient(90deg, #0f766e, #16a34a 30%, #f59e0b 62%, #db2777 100%);
-    box-shadow: 0 1px 6px rgb(245 158 11 / 0.45);
+    background: linear-gradient(90deg, #14703f, #2cb56a 34%, #90ee90 66%, #1a8f52 100%);
+    box-shadow: 0 1px 6px rgb(44 181 106 / 0.45);
     transform-origin: left center;
     animation: brand-underline 5.5s ease-in-out infinite;
   }
@@ -397,13 +397,13 @@
   }
 
   .gebeta-halo {
-    background: radial-gradient(circle at center, rgb(233 185 73 / 0.5), rgb(15 107 58 / 0.3) 55%, transparent 75%);
+    background: radial-gradient(circle at center, rgb(144 238 144 / 0.55), rgb(15 107 58 / 0.3) 55%, transparent 75%);
     filter: blur(14px);
     animation: gebeta-glow 5s ease-in-out infinite;
   }
 
   .brand-halo {
-    background: radial-gradient(circle at 34% 28%, rgb(233 185 73 / 0.5), rgb(15 107 58 / 0.28) 55%, transparent 72%);
+    background: radial-gradient(circle at 34% 28%, rgb(185 237 204 / 0.55), rgb(15 107 58 / 0.28) 55%, transparent 72%);
     filter: blur(12px);
     animation: gebeta-glow 6.5s ease-in-out infinite;
   }
@@ -442,7 +442,7 @@
 
   .brand-mark:hover .brand-mark-svg {
     transform: scale(1.06);
-    filter: drop-shadow(0 8px 22px rgba(233, 185, 73, 0.4));
+    filter: drop-shadow(0 8px 22px rgba(44, 181, 106, 0.45));
   }
 }
 
@@ -688,7 +688,7 @@
   width: 22px;
   height: 22px;
   border-radius: 999px;
-  background: #2563eb;
+  background: #0f6b3a;
   border: 3px solid #fff;
   box-sizing: border-box;
   animation: nav-ping 2.4s ease-out infinite;
@@ -696,13 +696,13 @@
 
 @keyframes nav-ping {
   0% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.45);
+    box-shadow: 0 0 0 0 rgba(15, 107, 58, 0.45);
   }
   70% {
-    box-shadow: 0 0 0 16px rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 16px rgba(15, 107, 58, 0);
   }
   100% {
-    box-shadow: 0 0 0 0 rgba(37, 99, 235, 0);
+    box-shadow: 0 0 0 0 rgba(15, 107, 58, 0);
   }
 }
 
@@ -735,11 +735,11 @@
 .eq-marker-start {
   width: 22px;
   height: 22px;
-  background: #2563eb;
+  background: #0f6b3a;
 }
 .eq-marker-end {
   width: 24px;
   height: 24px;
-  background: #f97316;
-  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.55);
+  background: #90ee90;
+  box-shadow: 0 2px 10px rgba(44, 181, 106, 0.6);
 }

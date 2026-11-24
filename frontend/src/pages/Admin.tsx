@@ -90,10 +90,10 @@ const CATEGORY_VALUES: DestinationCategory[] = [
 ];
 
 const CATEGORY_TONE: Record<DestinationCategory, string> = {
-  HISTORY: "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
+  HISTORY: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
   HERITAGE: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
-  NATURE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300",
-  WILDLIFE: "bg-lime-100 text-lime-800 dark:bg-lime-400/15 dark:text-lime-300",
+  NATURE: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
+  WILDLIFE: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
   ADVENTURE: "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300",
   CULTURE: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
   CITY: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
@@ -108,11 +108,11 @@ const TILES: { key: keyof AdminOverview["totals"]; label: string; icon: typeof U
   { key: "users", label: "Members", icon: Users, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
   { key: "posts", label: "Stories", icon: MessageCircle, tone: "from-leaf-500 via-leaf-600 to-leaf-600" },
   { key: "likes", label: "Likes", icon: Heart, tone: "from-rose-500 via-leaf-600 to-leaf-700" },
-  { key: "comments", label: "Comments", icon: MessageCircle, tone: "from-amber-400 via-leaf-500 to-rose-500" },
-  { key: "follows", label: "Follows", icon: Users, tone: "from-emerald-500 via-emerald-600 to-leaf-700" },
+  { key: "comments", label: "Comments", icon: MessageCircle, tone: "from-leaf-400 via-leaf-500 to-rose-500" },
+  { key: "follows", label: "Follows", icon: Users, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
   { key: "messages", label: "Messages", icon: MessageCircle, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
-  { key: "destinations", label: "Places", icon: MapPin, tone: "from-leaf-500 via-emerald-600 to-green-700" },
-  { key: "attempts", label: "Quiz plays", icon: Trophy, tone: "from-yellow-400 via-amber-500 to-leaf-600" },
+  { key: "destinations", label: "Places", icon: MapPin, tone: "from-leaf-500 via-leaf-600 to-green-700" },
+  { key: "attempts", label: "Quiz plays", icon: Trophy, tone: "from-leaf-400 via-leaf-500 to-leaf-600" },
   { key: "newUsers30d", label: "New in 30d", icon: TrendingUp, tone: "from-leaf-500 via-leaf-600 to-rose-600" },
   { key: "banned", label: "Suspended", icon: Ban, tone: "from-slate-500 via-slate-600 to-slate-700" },
 ];
@@ -187,7 +187,7 @@ function OverviewPanel() {
 
         <Card className="flex flex-col gap-3 p-5">
           <h3 className="flex items-center gap-2 font-semibold">
-            <MapPin className="h-4 w-4 text-emerald-600" aria-hidden /> Most talked-about places
+            <MapPin className="h-4 w-4 text-leaf-600" aria-hidden /> Most talked-about places
           </h3>
           {report.topPlaces.length === 0 ? (
             <p className="py-6 text-center text-sm text-muted">No stories are linked to a place yet.</p>
@@ -201,7 +201,7 @@ function OverviewPanel() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-raised">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-leaf-500"
+                      className="h-full rounded-full bg-gradient-to-r from-leaf-500 to-leaf-500"
                       style={{ width: `${Math.max(4, (place.stories / maxPlace) * 100)}%` }}
                     />
                   </div>
@@ -214,7 +214,7 @@ function OverviewPanel() {
 
       <Card className="flex flex-col gap-3 p-5">
         <h3 className="flex items-center gap-2 font-semibold">
-          <Star className="h-4 w-4 text-amber-500" aria-hidden /> Most engaging stories
+          <Star className="h-4 w-4 text-leaf-500" aria-hidden /> Most engaging stories
         </h3>
         {report.topStories.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted">No stories have been shared yet.</p>
@@ -223,7 +223,7 @@ function OverviewPanel() {
             {report.topStories.map((story) => (
               <li
                 key={story.id}
-                className="flex flex-col gap-1 rounded-xl border border-line bg-gradient-to-br from-amber-50 to-rose-50 p-3 dark:from-amber-400/5 dark:to-rose-400/5"
+                className="flex flex-col gap-1 rounded-xl border border-line bg-gradient-to-br from-leaf-50 to-rose-50 p-3 dark:from-leaf-400/5 dark:to-rose-400/5"
               >
                 <p className="line-clamp-2 text-sm font-semibold">{story.title}</p>
                 <p className="text-xs text-muted">
@@ -565,9 +565,9 @@ const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
 ];
 
 const MEDALS = [
-  "bg-gradient-to-br from-amber-400 to-yellow-600 text-white",
+  "bg-gradient-to-br from-leaf-600 to-leaf-700 text-white",
   "bg-gradient-to-br from-slate-300 to-slate-500 text-white",
-  "bg-gradient-to-br from-leaf-400 to-amber-700 text-white",
+  "bg-gradient-to-br from-leaf-600 to-leaf-800 text-white",
 ];
 
 function LeaderboardPanel() {
@@ -596,7 +596,7 @@ function LeaderboardPanel() {
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 font-semibold">
-          <Trophy className="h-4 w-4 text-amber-500" aria-hidden /> Leaderboard report
+          <Trophy className="h-4 w-4 text-leaf-500" aria-hidden /> Leaderboard report
         </h3>
         <div className="flex flex-col items-end gap-1.5">
           <div className="flex gap-1 rounded-xl bg-subtle p-1" role="tablist" aria-label="Period">
@@ -609,7 +609,7 @@ function LeaderboardPanel() {
                 onClick={() => setPeriod(p.value)}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-sm font-semibold transition",
-                  period === p.value ? "bg-gradient-to-br from-amber-400 to-leaf-500 text-white shadow-sm" : "text-muted hover:text-ink",
+                  period === p.value ? "bg-gradient-to-br from-leaf-600 to-leaf-700 text-white shadow-sm" : "text-muted hover:text-ink",
                 )}
               >
                 {tt(p.label)}
@@ -630,15 +630,15 @@ function LeaderboardPanel() {
       {report && (
         <>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-leaf-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Completed</p>
               <p className="text-lg font-bold">{report.summary.completed}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-emerald-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Average</p>
               <p className="text-lg font-bold">{report.summary.averageScore}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-leaf-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-400 to-leaf-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Top points</p>
               <p className="text-lg font-bold">{report.summary.topScore}</p>
             </div>
@@ -692,7 +692,7 @@ function LeaderboardPanel() {
                         {entry.banned ? (
                           <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-semibold text-rose-700">Suspended</span>
                         ) : (
-                          <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[11px] font-semibold text-emerald-700">Active</span>
+                          <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[11px] font-semibold text-leaf-700">Active</span>
                         )}
                       </td>
                     </tr>
@@ -880,7 +880,7 @@ function PrizeConfigEditor({
           <p className="text-sm font-semibold">Prize configuration</p>
           <p className="text-xs text-muted">Each row is one winning place with its own prize type.</p>
         </div>
-        <span className="rounded-full bg-amber-100 px-2.5 py-1 text-xs font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+        <span className="rounded-full bg-leaf-100 px-2.5 py-1 text-xs font-bold text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300">
           {rows.length} winners
         </span>
       </div>
@@ -961,7 +961,7 @@ function PrizeConfigEditor({
         <Button type="button" loading={saving} onClick={() => void save()}>
           Save configuration
         </Button>
-        {saved && <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Configuration saved.</span>}
+        {saved && <span className="text-sm font-medium text-leaf-700 dark:text-leaf-300">Configuration saved.</span>}
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}
     </div>
@@ -991,13 +991,13 @@ function PrizeRow({ award, onSaved }: { award: PrizeAward; onSaved: (updated: Pr
   };
 
   return (
-    <li className="flex flex-col gap-2 rounded-xl border border-line bg-gradient-to-br from-amber-50/80 to-leaf-50/40 p-3 dark:from-amber-400/5 dark:to-leaf-400/5">
+    <li className="flex flex-col gap-2 rounded-xl border border-line bg-gradient-to-br from-leaf-50/80 to-leaf-50/40 p-3 dark:from-leaf-400/5 dark:to-leaf-400/5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           {award.imageUrl ? (
             <img src={award.imageUrl} alt="" className="h-11 w-11 shrink-0 rounded-xl border border-line object-cover" />
           ) : (
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-leaf-100 text-leaf-700 dark:bg-leaf-400/15 dark:text-leaf-300">
               <Sparkles className="h-4 w-4" aria-hidden />
             </span>
           )}
@@ -1019,7 +1019,7 @@ function PrizeRow({ award, onSaved }: { award: PrizeAward; onSaved: (updated: Pr
             {award.description && <p className="text-xs text-muted">{award.description}</p>}
           </div>
         </div>
-        <p className="text-sm font-bold text-amber-700 dark:text-amber-300">
+        <p className="text-sm font-bold text-leaf-700 dark:text-leaf-300">
           {award.amountEtb === null ? "—" : formatEtb(award.amountEtb)}
         </p>
       </div>
@@ -1135,9 +1135,9 @@ function AwardForm({
   return (
     <form
       onSubmit={submit}
-      className="flex flex-col gap-3 rounded-xl border border-dashed border-amber-300 bg-amber-50/40 p-3 dark:border-amber-400/30 dark:bg-amber-400/5"
+      className="flex flex-col gap-3 rounded-xl border border-dashed border-leaf-300 bg-leaf-50/40 p-3 dark:border-leaf-400/30 dark:bg-leaf-400/5"
     >
-      <p className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-300">
+      <p className="flex items-center gap-2 text-sm font-semibold text-leaf-800 dark:text-leaf-300">
         <Plus className="h-4 w-4" aria-hidden /> Grant a prize by hand
       </p>
 
@@ -1190,7 +1190,7 @@ function AwardForm({
       </div>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
-      {done && <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Prize granted.</p>}
+      {done && <p className="text-sm font-medium text-leaf-700 dark:text-leaf-300">Prize granted.</p>}
       <Button type="submit" loading={busy} className="self-start">
         Grant prize
       </Button>
@@ -1272,7 +1272,7 @@ function PrizesPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 font-semibold">
-            <Sparkles className="h-4 w-4 text-amber-500" aria-hidden /> Prizes
+            <Sparkles className="h-4 w-4 text-leaf-500" aria-hidden /> Prizes
           </h3>
           <p className="text-xs text-muted">Configure what each winning place receives, then snapshot a period's winners.</p>
         </div>
@@ -1287,7 +1287,7 @@ function PrizesPanel() {
               className={cn(
                 "rounded-lg px-3 py-1.5 text-sm font-semibold transition",
                 period === p.value
-                  ? "bg-gradient-to-br from-amber-400 to-leaf-500 text-white shadow-sm"
+                  ? "bg-gradient-to-br from-leaf-600 to-leaf-700 text-white shadow-sm"
                   : "text-muted hover:text-ink",
               )}
             >
@@ -1512,7 +1512,7 @@ function PlacesPanel() {
     <div className="grid gap-4 lg:grid-cols-[1fr_1.15fr]">
       <Card className="flex flex-col gap-3 p-5">
         <h3 className="flex items-center gap-2 font-semibold">
-          <MapPin className="h-4 w-4 text-emerald-600" aria-hidden /> Places in the catalogue
+          <MapPin className="h-4 w-4 text-leaf-600" aria-hidden /> Places in the catalogue
         </h3>
         {error && <p role="alert" className="text-sm text-rose-600">{error}</p>}
         {!places && !error && <PageLoader />}
@@ -1524,7 +1524,7 @@ function PlacesPanel() {
                 {place.imageUrl ? (
                   <img src={place.imageUrl} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
                 ) : (
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-leaf-600 text-white">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 text-white">
                     <MapPin className="h-5 w-5" aria-hidden />
                   </span>
                 )}
@@ -1532,7 +1532,7 @@ function PlacesPanel() {
                   <p className="flex items-center gap-2 truncate text-sm font-semibold">
                     {place.name}
                     {place.featured && (
-                      <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold text-amber-800">Featured</span>
+                      <span className="rounded-full bg-leaf-100 px-1.5 py-0.5 text-[10px] font-bold text-leaf-800">Featured</span>
                     )}
                   </p>
                   <p className="truncate text-xs text-muted">
@@ -1686,7 +1686,7 @@ function PlacesPanel() {
 
           {formError && <p role="alert" className="text-sm text-rose-600">{formError}</p>}
           {saved && (
-            <p className="flex items-center gap-1.5 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            <p className="flex items-center gap-1.5 text-sm font-medium text-leaf-700 dark:text-leaf-300">
               <CheckCircle2 className="h-4 w-4" aria-hidden /> {saved}
             </p>
           )}
@@ -1738,12 +1738,12 @@ function PermissionGrid({
                   className={cn(
                     "flex items-center gap-2 rounded-xl border px-2.5 py-1.5 text-left text-xs font-medium transition disabled:cursor-not-allowed disabled:opacity-70",
                     on
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-400/30 dark:bg-emerald-400/10 dark:text-emerald-200"
+                      ? "border-leaf-300 bg-leaf-50 text-leaf-900 dark:border-leaf-400/30 dark:bg-leaf-400/10 dark:text-leaf-200"
                       : "border-line bg-surface text-muted hover:text-ink",
                   )}
                 >
                   {on ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-emerald-600" aria-hidden />
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-leaf-600" aria-hidden />
                   ) : (
                     <XCircle className="h-3.5 w-3.5 shrink-0 text-slate-300" aria-hidden />
                   )}
@@ -1891,7 +1891,7 @@ function RolesPanel() {
 
       <Card className="flex flex-col gap-3 p-5">
         <h3 className="flex items-center gap-2 font-semibold">
-          <Plus className="h-4 w-4 text-emerald-600" aria-hidden /> New role
+          <Plus className="h-4 w-4 text-leaf-600" aria-hidden /> New role
         </h3>
         <form onSubmit={(event) => void createRole(event)} className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -2194,34 +2194,34 @@ function AnswersPanel() {
       {data && (
         <>
           <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-leaf-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Plays</p>
               <p className="text-lg font-bold">{data.summary.plays}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-emerald-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Questions</p>
               <p className="text-lg font-bold">{data.summary.questions}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-leaf-500 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Correct</p>
               <p className="text-lg font-bold">{data.summary.correct}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-rose-500 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-rose-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Accuracy</p>
               <p className="text-lg font-bold">{data.summary.accuracy}%</p>
             </div>
           </div>
 
           {data.hardest.length > 0 && (
-            <div className="rounded-2xl border border-amber-200 bg-amber-50/60 p-3 dark:border-amber-400/20 dark:bg-amber-400/5">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-amber-800 dark:text-amber-300">
+            <div className="rounded-2xl border border-leaf-200 bg-leaf-50/60 p-3 dark:border-leaf-400/20 dark:bg-leaf-400/5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-leaf-800 dark:text-leaf-300">
                 Missed most often
               </p>
               <ul className="flex flex-col gap-1 text-xs">
                 {data.hardest.slice(0, 4).map((row) => (
                   <li key={row.questionId} className="flex flex-wrap items-center justify-between gap-2">
                     <span className="min-w-0 truncate text-ink">{row.prompt}</span>
-                    <span className="shrink-0 font-bold text-amber-700 dark:text-amber-300">{row.accuracy}% right</span>
+                    <span className="shrink-0 font-bold text-leaf-700 dark:text-leaf-300">{row.accuracy}% right</span>
                   </li>
                 ))}
               </ul>
@@ -2271,7 +2271,7 @@ function AnswersPanel() {
                               </span>
                               <span className="min-w-0">{answer.prompt}</span>
                             </p>
-                            <p className={cn("pl-7", answer.correct ? "text-emerald-700 dark:text-emerald-300" : "text-rose-600")}>
+                            <p className={cn("pl-7", answer.correct ? "text-leaf-700 dark:text-leaf-300" : "text-rose-600")}>
                               Answered: {answer.givenText} {answer.correct ? "✓" : "✗"}
                               <span className="ml-1.5 rounded-full bg-subtle px-1.5 py-0.5 text-[10px] font-bold text-muted">
                                 {answer.correct
@@ -2334,7 +2334,7 @@ function RetriesPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 font-semibold">
-            <Banknote className="h-4 w-4 text-emerald-600" aria-hidden /> Quiz retry payments
+            <Banknote className="h-4 w-4 text-leaf-600" aria-hidden /> Quiz retry payments
           </h3>
           <p className="text-xs text-muted">
             Each extra daily play costs 3 ETB. Members confirm the payment themselves; this log is for review.
@@ -2356,15 +2356,15 @@ function RetriesPanel() {
       {report && (
         <>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-leaf-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Collected</p>
               <p className="text-lg font-bold">{formatEtb(report.totalEtb)}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-leaf-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Retries</p>
               <p className="text-lg font-bold">{report.confirmedCount}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-leaf-500 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-leaf-700 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Price</p>
               <p className="text-lg font-bold">{report.priceEtb} ETB</p>
             </div>
@@ -2459,7 +2459,7 @@ export function AdminPage() {
             className={cn(
               "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition",
               tab === value
-                ? "bg-gradient-to-r from-leaf-600 to-leaf-600 text-white shadow-md"
+                ? "bg-gradient-to-r from-leaf-700 to-leaf-600 text-white shadow-md"
                 : "border border-line bg-surface text-muted hover:text-ink",
             )}
           >
