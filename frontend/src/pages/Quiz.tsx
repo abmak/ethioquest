@@ -645,8 +645,25 @@ function RetryDialog({
   }, [open]);
 
   return (
-    <Modal open={open} onClose={busy ? () => undefined : onClose} title={ttp("Unlock a retry — {price} ETB", { price })}>
+    <Modal
+      open={open}
+      onClose={busy ? () => undefined : onClose}
+      title={ttp("Unlock a retry — {price} ETB", { price })}
+      footer={
+        <div className="flex flex-col gap-2">
+          {error && (
+            <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+              {error}
+            </p>
+          )}
+          <Button type="submit" form="retry-payment-form" loading={busy} className="w-full">
+            {tt("Confirm")}
+          </Button>
+        </div>
+      }
+    >
       <form
+        id="retry-payment-form"
         onSubmit={(event) => {
           event.preventDefault();
           if (!busy) onSubmit(method, reference);
@@ -696,16 +713,6 @@ function RetryDialog({
           <Banknote className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           Pay before confirming. Your confirmation is saved with the play so the Ethio Quest team can review it.
         </p>
-
-        {error && (
-          <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
-            {error}
-          </p>
-        )}
-
-        <Button type="submit" loading={busy} className="w-full">
-          I have paid {price} ETB — start retry
-        </Button>
       </form>
     </Modal>
   );

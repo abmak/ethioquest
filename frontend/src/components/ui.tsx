@@ -96,11 +96,14 @@ export function Modal({
   onClose,
   title,
   children,
+  footer,
 }: {
   open: boolean;
   onClose: () => void;
   title: string;
   children: ReactNode;
+  /** Pinned below the scrolling body so the primary action is always reachable. */
+  footer?: ReactNode;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -112,14 +115,17 @@ export function Modal({
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="max-h-[90vh] w-full overflow-y-auto rounded-t-2xl bg-surface p-5 shadow-lift sm:max-w-lg sm:rounded-2xl">
-        <div className="mb-4 flex items-center justify-between">
+      <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-surface p-5 shadow-lift sm:max-w-lg sm:rounded-2xl">
+        <div className="mb-4 flex shrink-0 items-center justify-between">
           <h2 className="text-lg font-bold text-ink">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-subtle" aria-label="Close">
             <X className="h-5 w-5" />
           </button>
         </div>
-        {children}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
+        {footer && (
+          <div className="mt-4 shrink-0 border-t border-line pb-[max(0rem,env(safe-area-inset-bottom))] pt-3">{footer}</div>
+        )}
       </div>
     </div>
   );
