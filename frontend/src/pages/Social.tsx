@@ -129,8 +129,8 @@ export function FollowButton({
           "inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-bold transition disabled:opacity-60",
           compact && "min-h-8 px-2.5",
           followed
-            ? "border border-violet-300 bg-violet-50 text-violet-700 hover:border-rose-300 hover:text-rose-600 dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200"
-            : "bg-gradient-to-br from-fuchsia-600 to-orange-500 text-white shadow-sm hover:shadow-md",
+            ? "border border-leaf-300 bg-leaf-50 text-leaf-700 hover:border-rose-300 hover:text-rose-600 dark:border-leaf-400/30 dark:bg-leaf-500/10 dark:text-leaf-200"
+            : "bg-gradient-to-br from-leaf-600 to-leaf-500 text-white shadow-sm hover:shadow-md",
         )}
       >
         {followed ? <UserRoundCheck className="h-3.5 w-3.5" aria-hidden /> : <UserPlus className="h-3.5 w-3.5" aria-hidden />}
@@ -144,13 +144,13 @@ export function FollowButton({
 function MemberCard({ member, onChanged }: { member: Member; onChanged: (member: Member) => void }) {
   const navigate = useNavigate();
   return (
-    <Card className="card-interactive flex flex-col gap-3 border-t-4 border-t-fuchsia-400 p-4">
+    <Card className="card-interactive flex flex-col gap-3 border-t-4 border-t-leaf-400 p-4">
       <div className="flex items-start gap-3">
-        <Link to={`/u/${member.username}`} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500">
+        <Link to={`/u/${member.username}`} className="focus:outline-none focus-visible:ring-2 focus-visible:ring-leaf-500">
           <Avatar name={member.displayName} src={member.avatarUrl} />
         </Link>
         <div className="min-w-0 flex-1">
-          <Link to={`/u/${member.username}`} className="block truncate font-bold text-ink hover:text-fuchsia-700">
+          <Link to={`/u/${member.username}`} className="block truncate font-bold text-ink hover:text-leaf-700">
             {member.displayName}
           </Link>
           <p className="truncate text-xs text-muted">
@@ -161,8 +161,8 @@ function MemberCard({ member, onChanged }: { member: Member; onChanged: (member:
       </div>
       {member.bio && <p className="line-clamp-2 text-sm text-muted">{member.bio}</p>}
       <div className="flex items-center gap-3 text-xs font-semibold text-muted">
-        <span className="text-fuchsia-700">{member.followers} followers</span>
-        <span className="text-teal-700">{member.stories} stories</span>
+        <span className="text-leaf-700">{member.followers} followers</span>
+        <span className="text-leaf-700">{member.stories} stories</span>
       </div>
       <div className="mt-auto flex items-center gap-2">
         <FollowButton
@@ -228,13 +228,13 @@ export function PeoplePage() {
 
       <label className="relative block">
         <span className="sr-only">Search members</span>
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-violet-500" aria-hidden />
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-leaf-500" aria-hidden />
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search by name, username or region"
-          className="w-full rounded-2xl border border-line bg-surface py-3 pl-10 pr-3 text-base outline-none focus:border-violet-500"
+          className="w-full rounded-2xl border border-line bg-surface py-3 pl-10 pr-3 text-base outline-none focus:border-leaf-500"
         />
       </label>
 
@@ -265,7 +265,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
           "max-w-[80%] rounded-2xl text-sm shadow-sm",
           hasMedia ? "p-2" : "px-3.5 py-2",
           message.mine
-            ? "rounded-br-md bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white"
+            ? "rounded-br-md bg-gradient-to-br from-leaf-600 to-leaf-500 text-white"
             : "rounded-bl-md border border-line bg-surface text-ink",
         )}
       >
@@ -499,7 +499,7 @@ function Thread({ userId }: { userId: string }) {
     return (
       <div className="flex flex-col items-start gap-3">
         <p role="alert" className="text-sm text-rose-600">{error}</p>
-        <Link to="/messages" className="text-sm font-semibold text-violet-700">Back to messages</Link>
+        <Link to="/messages" className="text-sm font-semibold text-leaf-700">Back to messages</Link>
       </div>
     );
   }
@@ -507,10 +507,10 @@ function Thread({ userId }: { userId: string }) {
 
   return (
     <div className="flex h-full min-h-[70vh] flex-col overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
-      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-violet-50 via-fuchsia-50 to-sky-50 px-4 py-3 dark:from-violet-500/10 dark:via-fuchsia-500/10 dark:to-sky-500/10">
+      <div className="flex items-center gap-3 border-b border-line bg-gradient-to-r from-leaf-50 via-leaf-50 to-leaf-50 px-4 py-3 dark:from-leaf-500/10 dark:via-leaf-500/10 dark:to-leaf-500/10">
         <Link
           to="/messages"
-          className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface/80 text-muted hover:text-violet-700 lg:hidden"
+          className="flex h-9 w-9 items-center justify-center rounded-xl bg-surface/80 text-muted hover:text-leaf-700 lg:hidden"
           aria-label="Back to messages"
         >
           <ArrowLeft className="h-4 w-4" />
@@ -530,7 +530,7 @@ function Thread({ userId }: { userId: string }) {
       <ul className="flex flex-1 flex-col gap-2 overflow-y-auto bg-raised/30 p-4">
         {messages.length === 0 && (
           <li className="mx-auto my-auto max-w-xs text-center text-sm text-muted">
-            <Sparkles className="mx-auto mb-2 h-6 w-6 text-fuchsia-500" aria-hidden />
+            <Sparkles className="mx-auto mb-2 h-6 w-6 text-leaf-500" aria-hidden />
             Say hello and ask about their favourite Ethiopian place.
           </li>
         )}
@@ -626,7 +626,7 @@ function Thread({ userId }: { userId: string }) {
                 onClick={() => setShowEmoji((open) => !open)}
                 aria-label="Emoji"
                 aria-expanded={showEmoji}
-                className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-violet-700"
+                className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-leaf-700"
               >
                 <Smile className="h-5 w-5" />
               </button>
@@ -636,7 +636,7 @@ function Thread({ userId }: { userId: string }) {
               onClick={() => fileRef.current?.click()}
               aria-label="Photo"
               disabled={uploading || Boolean(photo)}
-              className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-violet-700 disabled:opacity-40"
+              className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-leaf-700 disabled:opacity-40"
             >
               <ImagePlus className="h-5 w-5" />
             </button>
@@ -645,7 +645,7 @@ function Thread({ userId }: { userId: string }) {
               onClick={() => void startRecording()}
               aria-label="Record a voice note"
               disabled={uploading || Boolean(voice)}
-              className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-violet-700 disabled:opacity-40"
+              className="flex h-11 w-10 items-center justify-center rounded-xl text-muted hover:bg-subtle hover:text-leaf-700 disabled:opacity-40"
             >
               <Mic className="h-5 w-5" />
             </button>
@@ -662,7 +662,7 @@ function Thread({ userId }: { userId: string }) {
               rows={1}
               maxLength={2000}
               placeholder="Write a message…"
-              className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-surface px-3 py-2.5 text-base outline-none focus:border-violet-500"
+              className="max-h-32 min-h-11 flex-1 resize-none rounded-2xl border border-line bg-surface px-3 py-2.5 text-base outline-none focus:border-leaf-500"
             />
             <Button
               type="submit"
@@ -731,7 +731,7 @@ function ConversationList({ activeId }: { activeId?: string }) {
                 className={cn(
                   "flex items-center gap-3 rounded-2xl border px-3 py-2.5 transition",
                   activeId === conversation.member.id
-                    ? "border-violet-300 bg-violet-50 dark:border-violet-400/30 dark:bg-violet-500/10"
+                    ? "border-leaf-300 bg-leaf-50 dark:border-leaf-400/30 dark:bg-leaf-500/10"
                     : "border-transparent hover:border-line hover:bg-raised",
                 )}
               >
@@ -798,7 +798,7 @@ export function MessagesPage() {
             <Thread userId={userId} />
           ) : (
             <Card className="flex h-full min-h-[50vh] flex-col items-center justify-center gap-3 border-dashed text-center">
-              <MessageCircle className="h-8 w-8 text-violet-500" aria-hidden />
+              <MessageCircle className="h-8 w-8 text-leaf-500" aria-hidden />
               <p className="font-semibold text-ink">Choose a conversation</p>
               <p className="max-w-xs text-sm text-muted">Your messages stay private between you and the traveller.</p>
             </Card>
@@ -836,7 +836,7 @@ export function ProfilePage() {
     return (
       <div className="flex flex-col items-start gap-3">
         <p role="alert" className="text-sm text-rose-600">{error}</p>
-        <Link to="/people" className="text-sm font-semibold text-violet-700">Back to people</Link>
+        <Link to="/people" className="text-sm font-semibold text-leaf-700">Back to people</Link>
       </div>
     );
   }
@@ -872,7 +872,7 @@ export function ProfilePage() {
                 />
               </span>
               <Link to={`/messages/${profile.id}`}>
-                <Button className="min-h-9 bg-white/95 px-3 text-xs text-violet-800 hover:bg-white">
+                <Button className="min-h-9 bg-white/95 px-3 text-xs text-leaf-800 hover:bg-white">
                   <MessageCircle className="h-3.5 w-3.5" aria-hidden />
                   Message
                 </Button>
@@ -881,7 +881,7 @@ export function ProfilePage() {
           )}
           {profile.isMe && user && (
             <Link to="/experiences/new">
-              <Button className="min-h-9 bg-white/95 px-3 text-xs text-violet-800 hover:bg-white">Share a story</Button>
+              <Button className="min-h-9 bg-white/95 px-3 text-xs text-leaf-800 hover:bg-white">Share a story</Button>
             </Link>
           )}
         </div>
@@ -894,12 +894,12 @@ export function ProfilePage() {
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {profile.stories.map((story) => (
             <li key={story.id}>
-              <Link to={`/experiences/${story.id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500">
+              <Link to={`/experiences/${story.id}`} className="block focus:outline-none focus-visible:ring-2 focus-visible:ring-leaf-500">
                 <Card className="card-interactive overflow-hidden p-0">
                   {story.imageUrls[0] ? (
                     <img src={story.imageUrls[0]} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
                   ) : (
-                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-orange-400 to-amber-300">
+                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-amber-300">
                       <Sparkles className="h-8 w-8 text-white/80" aria-hidden />
                     </div>
                   )}

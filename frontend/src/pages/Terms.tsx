@@ -20,7 +20,7 @@ export function TermsPage() {
 
       <Card className="rounded-3xl p-5 sm:p-6">
         <div className="flex items-center gap-3">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white shadow-md shadow-fuchsia-500/30">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-leaf-600 to-leaf-600 text-white shadow-md shadow-leaf-500/30">
             <ScrollText className="h-5 w-5" aria-hidden />
           </span>
           <div>

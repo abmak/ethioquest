@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   Banknote,
   CheckCircle2,
+  ChevronDown,
   Clock,
   Flame,
   Lock,
@@ -54,12 +56,12 @@ function answeredCount(question: QuizQuestion, answer: Answer | undefined): bool
 
 const CATEGORY_STYLES: Record<string, string> = {
   HISTORY: "bg-amber-100 text-amber-800 ring-amber-200",
-  HERITAGE: "bg-fuchsia-100 text-fuchsia-800 ring-fuchsia-200",
+  HERITAGE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
   NATURE: "bg-emerald-100 text-emerald-800 ring-emerald-200",
   WILDLIFE: "bg-lime-100 text-lime-800 ring-lime-200",
-  ADVENTURE: "bg-orange-100 text-orange-800 ring-orange-200",
-  CULTURE: "bg-violet-100 text-violet-800 ring-violet-200",
-  CITY: "bg-sky-100 text-sky-800 ring-sky-200",
+  ADVENTURE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
+  CULTURE: "bg-leaf-100 text-leaf-800 ring-leaf-200",
+  CITY: "bg-leaf-100 text-leaf-800 ring-leaf-200",
   FOOD: "bg-rose-100 text-rose-800 ring-rose-200",
 };
 
@@ -87,6 +89,8 @@ export function QuizPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [payBusy, setPayBusy] = useState(false);
   const [payError, setPayError] = useState<string | null>(null);
+  // page = the challenge overview, play = the immersive player, result = the score card.
+  const [stage, setStage] = useState<"page" | "play" | "result">("page");
   const submittingRef = useRef(false);
 
   /** Resets the play state and starts the clock from the server's start time. */
@@ -99,6 +103,7 @@ export function QuizPage() {
     setResult(null);
     setAdvancing(false);
     setError(null);
+    setStage("play");
   };
 
   const load = async () => {
@@ -166,6 +171,7 @@ export function QuizPage() {
       const response = await api.post<QuizSubmitResponse>("/api/quiz/daily/submit", payload);
       playFinish();
       setResult(response.data);
+      setStage("result");
       setStartedAt(null);
       setQuestionStartedAt(null);
       // Refresh the quota and the list of finished plays for this card.
@@ -280,9 +286,9 @@ export function QuizPage() {
   return (
     <div className="flex flex-col gap-6">
       {/* Hero: the challenge story, its rules and the start action. */}
-      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-fuchsia-600 via-orange-500 to-amber-400 p-6 text-white shadow-[0_24px_70px_-30px_rgba(219,39,119,0.85)] sm:p-8">
-        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/20 blur-3xl" aria-hidden />
-        <div className="pointer-events-none absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-fuchsia-300/40 blur-3xl" aria-hidden />
+      <section className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-leaf-200 via-leaf-300 to-leaf-400 p-6 text-leaf-950 shadow-[0_24px_70px_-34px_rgba(26,143,82,0.5)] sm:p-8">
+        <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-white/60 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-white/40 blur-3xl" aria-hidden />
         <div className="pointer-events-none absolute inset-0 opacity-[0.14]" aria-hidden>
           <div className="absolute left-6 top-10 h-2 w-2 rounded-full bg-white" />
           <div className="absolute right-16 top-16 h-3 w-3 rounded-full bg-white" />
@@ -292,7 +298,7 @@ export function QuizPage() {
 
         <div className="relative flex flex-col gap-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/20 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] ring-1 ring-white/30 backdrop-blur">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/75 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.24em] text-leaf-800 ring-1 ring-white/70 backdrop-blur">
               <Sparkles className="h-3.5 w-3.5" aria-hidden />
               Daily challenge
             </span>
@@ -300,7 +306,7 @@ export function QuizPage() {
               type="button"
               onClick={toggleSound}
               aria-pressed={!muted}
-              className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-3 py-1.5 text-[11px] font-bold ring-1 ring-white/30 backdrop-blur transition hover:bg-white/30"
+              className="inline-flex items-center gap-1.5 rounded-full bg-white/75 px-3 py-1.5 text-[11px] font-bold text-leaf-800 ring-1 ring-white/70 backdrop-blur transition hover:bg-white"
             >
               {muted ? <VolumeX className="h-3.5 w-3.5" aria-hidden /> : <Volume2 className="h-3.5 w-3.5" aria-hidden />}
               {muted ? "Sound off" : "Sound on"}
@@ -311,7 +317,7 @@ export function QuizPage() {
             <h1 className="font-display text-3xl font-black leading-tight sm:text-5xl">
               Let&apos;s Know Ethiopia
             </h1>
-            <p className="mt-2 max-w-lg text-sm text-white/90 sm:text-base">
+            <p className="mt-2 max-w-lg text-sm text-leaf-900/85 sm:text-base">
               Ten questions on Ethiopian history, culture and heritage, with photo rounds on the places themselves.
               Pick an answer and the next question comes straight away — answer fast, answer right, and climb the
               monthly prize table.
@@ -319,16 +325,16 @@ export function QuizPage() {
           </div>
 
           <div className="flex flex-wrap gap-2 text-xs font-semibold">
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-leaf-900 ring-1 ring-white/60">
               <Target className="h-3.5 w-3.5" aria-hidden /> 10 questions
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-leaf-900 ring-1 ring-white/60">
               <Clock className="h-3.5 w-3.5" aria-hidden /> {quiz.timeLimitSeconds / 60} minutes
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-leaf-900 ring-1 ring-white/60">
               <Flame className="h-3.5 w-3.5" aria-hidden /> {quota.playsUsed} of {quota.maxPlays} plays today
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 ring-1 ring-white/25">
+            <span className="inline-flex items-center gap-1.5 rounded-full bg-white/70 px-3 py-1.5 text-leaf-900 ring-1 ring-white/60">
               <RotateCcw className="h-3.5 w-3.5" aria-hidden /> Retry {quota.retryPriceEtb} ETB
             </span>
           </div>
@@ -338,7 +344,7 @@ export function QuizPage() {
               type="button"
               onClick={() => (quota.freeAvailable ? void start() : setPayOpen(true))}
               disabled={busy}
-              className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-fuchsia-700 shadow-lg shadow-fuchsia-900/20 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
+              className="inline-flex min-h-12 w-fit items-center justify-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-leaf-800 shadow-lg shadow-leaf-900/15 transition hover:-translate-y-0.5 hover:shadow-xl disabled:opacity-60"
             >
               {quota.freeAvailable ? <Zap className="h-4 w-4" aria-hidden /> : <RotateCcw className="h-4 w-4" aria-hidden />}
               {busy
@@ -350,13 +356,13 @@ export function QuizPage() {
           )}
 
           {!inProgress && quota.exhausted && (
-            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white/20 px-4 py-2 text-sm font-semibold ring-1 ring-white/30">
+            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white/75 px-4 py-2 text-sm font-semibold text-leaf-900 ring-1 ring-white/60">
               <Lock className="h-4 w-4" aria-hidden /> All {quota.maxPlays} plays used — retries reopen after midnight (EAT)
             </span>
           )}
 
           {result && !quota.exhausted && (
-            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white/20 px-4 py-2 text-sm font-semibold ring-1 ring-white/30">
+            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-white/75 px-4 py-2 text-sm font-semibold text-leaf-900 ring-1 ring-white/60">
               <Trophy className="h-4 w-4" aria-hidden /> Best today {best?.score ?? result.score} · retry below for{" "}
               {quota.retryPriceEtb} ETB
             </span>
@@ -365,7 +371,7 @@ export function QuizPage() {
       </section>
 
       {result && (
-        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-emerald-600 via-teal-500 to-cyan-500 p-6 text-white shadow-[0_24px_70px_-32px_rgba(5,150,105,0.9)]">
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-emerald-600 via-leaf-500 to-leaf-500 p-6 text-white shadow-[0_24px_70px_-32px_rgba(5,150,105,0.9)]">
           <div className="pointer-events-none absolute -right-12 -top-12 h-48 w-48 rounded-full bg-lime-300/30 blur-2xl" aria-hidden />
           <div className="relative flex flex-col items-center gap-5 sm:flex-row sm:items-center sm:justify-between sm:gap-8">
             <div className="flex flex-col items-center gap-3 text-center sm:items-start sm:text-left">
@@ -426,23 +432,53 @@ export function QuizPage() {
         />
       )}
 
-      {inProgress && current && (
-        <QuestionView
-          question={current}
-          answer={answers[current.id]}
-          position={index}
-          total={quiz.questions.length}
-          remainingMs={remaining}
-          secondsOnQuestion={secondsOnQuestion}
-          advancing={advancing}
-          onAnswer={answerQuestion}
-        />
+      {inProgress && !result && (
+        <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-leaf-700 via-leaf-600 to-leaf-500 p-5 text-white shadow-lift">
+          <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/20 blur-2xl" aria-hidden />
+          <div className="relative flex flex-wrap items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Play in progress</p>
+              <p className="font-display text-lg font-black">
+                Question {index + 1} of {quiz.questions.length} is waiting
+              </p>
+              <p className="text-xs text-white/80">The clock keeps running while you are on this screen.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setStage("play")}
+              className="min-h-11 rounded-2xl bg-white px-5 text-sm font-black text-leaf-700 shadow-lg shadow-leaf-900/25 transition hover:-translate-y-0.5"
+            >
+              Resume
+            </button>
+          </div>
+        </Card>
       )}
 
       {error && (
         <p role="alert" className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
           {error}
         </p>
+      )}
+
+      {stage === "play" && inProgress && current && (
+        <PlayStage
+          question={current}
+          position={index}
+          total={quiz.questions.length}
+          answer={answers[current.id]}
+          remainingMs={remaining}
+          limitMs={limitMs}
+          secondsOnQuestion={secondsOnQuestion}
+          advancing={advancing}
+          muted={muted}
+          onToggleSound={toggleSound}
+          onAnswer={answerQuestion}
+          onMinimize={() => setStage("page")}
+        />
+      )}
+
+      {stage === "result" && result && (
+        <ResultStage result={result} times={times} best={best} onDone={() => setStage("page")} />
       )}
 
       <QuizLeaderboard />
@@ -493,12 +529,12 @@ function DailyPlaysCard({
   const byPlay = new Map(payments.map((p) => [p.playIndex, p]));
 
   return (
-    <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-amber-50 via-white to-fuchsia-50 p-5 ring-1 ring-violet-100 sm:p-6">
-      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-fuchsia-200/40 blur-2xl" aria-hidden />
+    <Card className="relative overflow-hidden rounded-3xl border-0 bg-gradient-to-br from-amber-50 via-white to-leaf-50 p-5 ring-1 ring-leaf-100 sm:p-6">
+      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-leaf-200/40 blur-2xl" aria-hidden />
       <div className="relative flex flex-col gap-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white shadow-lg shadow-fuchsia-500/25">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-leaf-600 to-leaf-500 text-white shadow-lg shadow-leaf-500/25">
               <RotateCcw className="h-5 w-5" aria-hidden />
             </span>
             <div>
@@ -508,7 +544,7 @@ function DailyPlaysCard({
               </p>
             </div>
           </div>
-          <span className="rounded-full bg-violet-600 px-3 py-1 text-xs font-black text-white">
+          <span className="rounded-full bg-leaf-600 px-3 py-1 text-xs font-black text-white">
             {quota.playsUsed} / {quota.maxPlays}
           </span>
         </div>
@@ -519,7 +555,7 @@ function DailyPlaysCard({
               key={i}
               className={cn(
                 "h-2 flex-1 rounded-full transition",
-                i < quota.playsUsed ? "bg-gradient-to-r from-violet-600 to-fuchsia-500" : "bg-slate-200",
+                i < quota.playsUsed ? "bg-gradient-to-r from-leaf-600 to-leaf-500" : "bg-slate-200",
               )}
             />
           ))}
@@ -547,7 +583,7 @@ function DailyPlaysCard({
                   <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" aria-hidden />
                   Play {play.playIndex + 1}
                   {play.paid ? (
-                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                    <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-leaf-700">
                       {quota.retryPriceEtb} ETB · {payment ? paymentLabel(payment.method) : "paid"}
                     </span>
                   ) : (
@@ -634,8 +670,8 @@ function RetryDialog({
                 className={cn(
                   "flex flex-col items-start gap-0.5 rounded-2xl border-2 px-3 py-2 text-left transition",
                   method === option.value
-                    ? "border-fuchsia-500 bg-fuchsia-50 shadow-sm"
-                    : "border-slate-200 hover:border-violet-300",
+                    ? "border-leaf-500 bg-leaf-50 shadow-sm"
+                    : "border-slate-200 hover:border-leaf-300",
                 )}
               >
                 <span className="text-sm font-bold text-slate-900">{tt(option.label)}</span>
@@ -652,7 +688,7 @@ function RetryDialog({
             onChange={(event) => setReference(event.target.value)}
             maxLength={80}
             placeholder="e.g. Telebirr transaction ID"
-            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-ink outline-none focus:border-fuchsia-500"
+            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-medium text-ink outline-none focus:border-leaf-500"
           />
         </label>
 
@@ -675,125 +711,296 @@ function RetryDialog({
   );
 }
 
-interface QuestionViewProps {
+/** Keeps the page behind an immersive stage from scrolling. */
+function useBodyScrollLock(locked: boolean) {
+  useEffect(() => {
+    if (!locked) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = previous;
+    };
+  }, [locked]);
+}
+
+interface PlayStageProps {
   question: QuizQuestion;
   position: number;
   total: number;
   answer: Answer | undefined;
   remainingMs: number;
+  limitMs: number;
   secondsOnQuestion: number;
   advancing: boolean;
+  muted: boolean;
+  onToggleSound: () => void;
   onAnswer: (value: Answer) => void;
+  onMinimize: () => void;
 }
 
-function QuestionView({ question, position, total, answer, remainingMs, secondsOnQuestion, advancing, onAnswer }: QuestionViewProps) {
+/**
+ * The challenge takes the whole screen while it runs: its own app bar, a live
+ * timer ring, one question at a time and thumb-sized answer cards, so a play on
+ * a phone behaves like a native quiz game rather than a page section.
+ */
+function PlayStage({
+  question,
+  position,
+  total,
+  answer,
+  remainingMs,
+  limitMs,
+  secondsOnQuestion,
+  advancing,
+  muted,
+  onToggleSound,
+  onAnswer,
+  onMinimize,
+}: PlayStageProps) {
+  useBodyScrollLock(true);
+
   const seconds = Math.ceil(remainingMs / 1000);
   const lowOnTime = seconds <= 30;
-  const progress = Math.round(((position + 1) / total) * 100);
+  const ringPercent = Math.max(0, Math.min(100, Math.round((remainingMs / Math.max(1, limitMs)) * 100)));
+  const clock = `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-  return (
-    <Card className="relative overflow-hidden rounded-3xl border-violet-100 p-5 sm:p-6">
-      <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-violet-200/40 blur-2xl" aria-hidden />
+  // Portalled to <body>: the page wrapper animates with a transform, which
+  // would otherwise make `fixed` resolve against that element instead of the
+  // viewport and leave the player floating inside the page column.
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain bg-[#f4fdf8] text-leaf-950">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -left-24 -top-28 h-72 w-72 rounded-full bg-leaf-300/50 blur-3xl" />
+        <div className="absolute -right-24 top-1/4 h-80 w-80 rounded-full bg-leaf-200/70 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/4 h-72 w-72 rounded-full bg-emerald-200/50 blur-3xl" />
+      </div>
 
-      <div className="relative flex flex-col gap-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <span className={cn("inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider ring-1", categoryStyle(question.category))}>
+      <div className="relative mx-auto flex w-full max-w-2xl flex-1 flex-col gap-4 px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between gap-2">
+          <button
+            type="button"
+            onClick={onMinimize}
+            className="grid h-10 w-10 place-items-center rounded-full border border-leaf-200 bg-white text-leaf-800 shadow-sm transition hover:bg-leaf-50 active:scale-95"
+            aria-label="Minimise the challenge"
+          >
+            <ChevronDown className="h-5 w-5" aria-hidden />
+          </button>
+
+          <span
+            className={cn(
+              "max-w-[55%] truncate rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.16em] ring-1",
+              categoryStyle(question.category),
+            )}
+          >
             {question.category}
           </span>
-          <div className="flex items-center gap-2">
-            <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-bold text-violet-700">
-              {position + 1} / {total}
-            </span>
-            <span
-              className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-bold tabular-nums ring-1 transition",
-                lowOnTime
-                  ? "animate-pulse bg-rose-100 text-rose-700 ring-rose-200"
-                  : "bg-emerald-100 text-emerald-700 ring-emerald-200",
-              )}
+
+          <button
+            type="button"
+            onClick={onToggleSound}
+            aria-pressed={!muted}
+            className="grid h-10 w-10 place-items-center rounded-full border border-leaf-200 bg-white text-leaf-800 shadow-sm transition hover:bg-leaf-50 active:scale-95"
+            aria-label={muted ? "Turn question sounds on" : "Turn question sounds off"}
+          >
+            {muted ? <VolumeX className="h-5 w-5" aria-hidden /> : <Volume2 className="h-5 w-5" aria-hidden />}
+          </button>
+        </div>
+
+        <div className="flex items-end justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-leaf-700/70">Question</p>
+            <p className="font-display text-3xl font-black leading-none text-leaf-950">
+              {position + 1}
+              <span className="text-base font-bold text-leaf-700/50"> / {total}</span>
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2.5">
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-leaf-700/70">Time left</p>
+              <p className={cn("text-sm font-black tabular-nums", lowOnTime ? "text-rose-600" : "text-leaf-800")}>
+                {secondsOnQuestion}s this question
+              </p>
+            </div>
+            <div
+              className="grid h-[68px] w-[68px] place-items-center rounded-full"
+              style={{
+                background: `conic-gradient(${lowOnTime ? "#e11d48" : "#1a8f52"} ${ringPercent}%, rgba(26,143,82,0.15) 0)`,
+              }}
+              role="timer"
+              aria-label={`${clock} left`}
             >
-              <Clock className="h-4 w-4" aria-hidden />
-              {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, "0")}
-            </span>
+              <div className="grid h-[56px] w-[56px] place-items-center rounded-full bg-white shadow-sm">
+                <span className={cn("text-sm font-black tabular-nums", lowOnTime ? "animate-pulse text-rose-600" : "text-leaf-950")}>
+                  {clock}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Segmented progress: one block per question. */}
-        <div className="flex gap-1" role="progressbar" aria-valuenow={progress} aria-valuemin={0} aria-valuemax={100}>
+        <div className="flex gap-1" role="progressbar" aria-valuenow={position + 1} aria-valuemin={1} aria-valuemax={total}>
           {Array.from({ length: total }).map((_, i) => (
             <span
               key={i}
               className={cn(
-                "h-2 flex-1 rounded-full transition-all duration-300",
-                i <= position ? "bg-gradient-to-r from-violet-600 via-fuchsia-500 to-orange-400" : "bg-slate-200",
+                "h-1.5 flex-1 rounded-full transition-all duration-300",
+                i <= position ? "bg-gradient-to-r from-leaf-400 to-leaf-600" : "bg-leaf-200/80",
               )}
             />
           ))}
         </div>
 
-        {question.imageUrl && (
-          <img
-            src={question.imageUrl}
-            alt="Question image"
-            className="max-h-64 w-full rounded-2xl object-cover shadow-sm ring-1 ring-slate-200"
-            loading="lazy"
-          />
-        )}
+        <div key={question.id} className="flex animate-fade-in flex-col gap-4">
+          {question.imageUrl && (
+            <img
+              src={question.imageUrl}
+              alt=""
+              className="max-h-60 w-full rounded-3xl object-cover ring-1 ring-leaf-200"
+              loading="lazy"
+            />
+          )}
 
-        <p className="text-lg font-bold leading-snug text-slate-900 sm:text-xl">{question.prompt}</p>
+          <p className="font-display text-xl font-black leading-snug text-leaf-950 sm:text-2xl">{question.prompt}</p>
 
-        {question.type === "MATCHING" ? (
-          <MatchingInput question={question} answer={Array.isArray(answer) ? answer : []} onChange={onAnswer} disabled={advancing} />
-        ) : (
-          <div className="grid gap-2.5">
-            {question.options.map((option, i) => {
-              const selected = answer === i;
-              return (
-                <button
-                  key={`${question.id}-${i}`}
-                  type="button"
-                  onClick={() => onAnswer(i)}
-                  disabled={advancing}
-                  aria-pressed={selected}
-                  className={cn(
-                    "group flex min-h-14 items-center gap-3 rounded-2xl border-2 px-3.5 py-3 text-left text-base font-medium transition-all duration-150 disabled:cursor-default",
-                    selected
-                      ? "border-transparent bg-gradient-to-r from-violet-600 via-fuchsia-600 to-orange-500 text-white shadow-lg shadow-fuchsia-500/25"
-                      : "border-slate-200 bg-white text-slate-800 hover:-translate-y-0.5 hover:border-violet-300 hover:bg-violet-50/60 hover:shadow-md",
-                  )}
-                >
-                  <span
+          {question.type === "MATCHING" ? (
+            <MatchingInput
+              question={question}
+              answer={Array.isArray(answer) ? answer : []}
+              onChange={onAnswer}
+              disabled={advancing}
+            />
+          ) : (
+            <div className="grid gap-2.5">
+              {question.options.map((option, i) => {
+                const selected = answer === i;
+                return (
+                  <button
+                    key={`${question.id}-${i}`}
+                    type="button"
+                    onClick={() => onAnswer(i)}
+                    disabled={advancing}
+                    aria-pressed={selected}
                     className={cn(
-                      "grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black",
+                      "flex min-h-16 w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left text-[15px] font-semibold transition-all duration-150 disabled:cursor-default",
                       selected
-                        ? "bg-white/25 text-white ring-1 ring-white/40"
-                        : "bg-gradient-to-br from-violet-100 to-fuchsia-100 text-violet-700 group-hover:from-violet-200 group-hover:to-fuchsia-200",
+                        ? "scale-[1.01] bg-gradient-to-r from-leaf-300 via-leaf-400 to-leaf-500 text-leaf-950 shadow-[0_18px_40px_-20px_rgba(26,143,82,0.55)]"
+                        : "border border-leaf-200 bg-white text-leaf-950 shadow-[0_10px_30px_-26px_rgba(6,46,26,0.7)] hover:border-leaf-400 hover:bg-leaf-50 active:scale-[0.99]",
                     )}
-                    aria-hidden
                   >
-                    {OPTION_LETTERS[i] ?? i + 1}
-                  </span>
-                  <span className="min-w-0 flex-1">{option}</span>
-                  {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-white" aria-hidden />}
-                </button>
-              );
-            })}
+                    <span
+                      className={cn(
+                        "grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black",
+                        selected ? "bg-white text-leaf-800 ring-1 ring-white" : "bg-leaf-100 text-leaf-700",
+                      )}
+                      aria-hidden
+                    >
+                      {OPTION_LETTERS[i] ?? i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1">{option}</span>
+                    {selected && <CheckCircle2 className="h-5 w-5 shrink-0 text-leaf-800" aria-hidden />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="mt-auto pt-2">
+          <p className={cn("text-center text-xs font-semibold", advancing ? "text-leaf-600" : "text-leaf-700/60")}>
+            {advancing ? "Locking in your answer…" : "Pick an answer — the next question comes straight away"}
+          </p>
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
+interface ResultStageProps {
+  result: QuizSubmitResponse;
+  times: QuestionTime[];
+  best: QuizPlaySummary | null;
+  onDone: () => void;
+}
+
+/** The score card that closes a play, shown full screen like the challenge. */
+function ResultStage({ result, times, best, onDone }: ResultStageProps) {
+  useBodyScrollLock(true);
+
+  const scorePercent = Math.max(0, Math.min(100, result.score));
+  const headline = scorePercent >= 80 ? "Outstanding!" : scorePercent >= 50 ? "Nicely done!" : "Good effort!";
+  const bestScore = best ? Math.max(best.score, result.score) : result.score;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex flex-col overflow-y-auto overscroll-contain bg-[#f1fcf6] text-leaf-950">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+        <div className="absolute -left-20 -top-24 h-72 w-72 rounded-full bg-leaf-300/50 blur-3xl" />
+        <div className="absolute -right-24 top-1/4 h-80 w-80 rounded-full bg-leaf-200/70 blur-3xl" />
+        <div className="absolute -bottom-24 left-1/3 h-72 w-72 rounded-full bg-emerald-200/50 blur-3xl" />
+      </div>
+
+      <div className="relative mx-auto flex w-full max-w-xl flex-1 flex-col justify-center gap-6 px-4 py-8">
+        <div className="animate-pop-in flex flex-col items-center gap-3 text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-leaf-100 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-leaf-800 ring-1 ring-leaf-300/70">
+            <Sparkles className="h-3.5 w-3.5" aria-hidden /> Result
+          </span>
+          <h2 className="font-display text-3xl font-black text-leaf-950">{headline}</h2>
+
+          <div
+            className="grid h-44 w-44 place-items-center rounded-full"
+            style={{ background: `conic-gradient(#1a8f52 ${scorePercent}%, #dcf6e5 0)` }}
+            role="img"
+            aria-label={`Score ${result.score} out of 100`}
+          >
+            <div className="grid h-36 w-36 place-items-center rounded-full bg-white shadow-lg shadow-leaf-500/15">
+              <p className="text-5xl font-black leading-none text-leaf-950">{result.score}</p>
+              <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.2em] text-leaf-700/70">of 100</p>
+            </div>
+          </div>
+
+          <p className="text-sm font-semibold text-leaf-900/80">
+            {result.correctCount} of {result.totalQuestions} correct in {formatDuration(result.durationMs)}
+          </p>
+          {result.timedOut && (
+            <p className="rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-700 ring-1 ring-rose-200">
+              Time ran out, so this attempt is not scored
+            </p>
+          )}
+          <p className="inline-flex items-center gap-1.5 rounded-full bg-leaf-100 px-3 py-1 text-xs font-bold text-leaf-800 ring-1 ring-leaf-300/70">
+            <Trophy className="h-3.5 w-3.5" aria-hidden /> Best today {bestScore}/100
+          </p>
+        </div>
+
+        {times.length > 0 && (
+          <div className="rounded-2xl bg-white p-3 ring-1 ring-leaf-200">
+            <p className="mb-2 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-leaf-700/70">
+              <Timer className="h-3.5 w-3.5" aria-hidden /> Time per question
+            </p>
+            <ul className="grid grid-cols-2 gap-x-3 gap-y-1 text-xs sm:grid-cols-5">
+              {times.map((time, i) => (
+                <li key={time.questionId} className="flex items-center justify-between gap-2 rounded-lg bg-leaf-50 px-2 py-1">
+                  <span className="font-semibold text-leaf-700">Q{i + 1}</span>
+                  <span className="font-black tabular-nums text-leaf-950">{time.seconds}s</span>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
 
-        <div className="mt-1 flex flex-wrap items-center justify-between gap-2 text-xs text-muted">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-600">
-            <Timer className="h-3.5 w-3.5" aria-hidden />
-            {secondsOnQuestion}s on this question
-          </span>
-          <span className={cn("font-semibold", advancing ? "text-fuchsia-700" : "text-muted")}>
-            {advancing ? "Moving to the next question…" : "Answers advance automatically"}
-          </span>
-        </div>
+        <button
+          type="button"
+          onClick={onDone}
+          className="min-h-12 w-full rounded-2xl bg-gradient-to-r from-leaf-300 via-leaf-400 to-leaf-500 px-5 py-3.5 text-sm font-black text-leaf-950 shadow-lg shadow-leaf-500/20 transition hover:-translate-y-0.5 hover:shadow-xl active:translate-y-0"
+        >
+          Back to the challenge
+        </button>
       </div>
-    </Card>
+    </div>,
+    document.body,
   );
 }
+
 
 function MatchingInput({
   question,
@@ -812,16 +1019,16 @@ function MatchingInput({
       {question.matchLefts.map((left, i) => (
         <label
           key={`${question.id}-left-${i}`}
-          className="flex flex-col gap-1.5 rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-3 text-sm font-semibold text-slate-800 transition focus-within:border-fuchsia-300 focus-within:bg-white"
+          className="flex flex-col gap-1.5 rounded-2xl border-2 border-slate-200 bg-slate-50/70 p-3 text-sm font-semibold text-slate-800 transition focus-within:border-leaf-300 focus-within:bg-white"
         >
           <span className="flex items-center gap-2">
-            <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-teal-500 to-emerald-500 text-[11px] font-black text-white" aria-hidden>
+            <span className="grid h-6 w-6 place-items-center rounded-lg bg-gradient-to-br from-leaf-500 to-emerald-500 text-[11px] font-black text-white" aria-hidden>
               {i + 1}
             </span>
             {left}
           </span>
           <select
-            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900 outline-none focus:border-fuchsia-500"
+            className="min-h-11 rounded-xl border border-slate-200 bg-white px-3 text-base font-medium text-slate-900 outline-none focus:border-leaf-500"
             value={answer[i] ?? -1}
             disabled={disabled}
             onChange={(e) => {

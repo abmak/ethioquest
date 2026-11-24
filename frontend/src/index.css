@@ -4,24 +4,24 @@
 
 @layer base {
   :root {
-    /* Paper-white canvas, highland green and coffee-brown ink. */
-    --canvas: 247 247 244;
+    /* Pale light-green canvas, deep green ink. */
+    --canvas: 243 252 247;
     --surface: 255 255 255;
-    --surface-2: 241 244 239;
-    --ink: 20 27 23;
-    --muted: 98 110 102;
-    --line: 228 232 226;
+    --surface-2: 231 248 238;
+    --ink: 14 40 26;
+    --muted: 82 110 92;
+    --line: 214 238 223;
     --pattern: 15 107 58;
     color-scheme: light;
   }
 
   .dark {
-    --canvas: 9 13 11;
-    --surface: 15 21 18;
-    --surface-2: 23 31 27;
-    --ink: 236 241 236;
-    --muted: 154 167 158;
-    --line: 35 47 40;
+    --canvas: 6 16 11;
+    --surface: 11 26 17;
+    --surface-2: 17 38 25;
+    --ink: 231 247 236;
+    --muted: 148 178 158;
+    --line: 27 58 38;
     --pattern: 120 215 156;
     color-scheme: dark;
   }
@@ -38,8 +38,8 @@
   body {
     @apply min-h-screen bg-canvas font-sans text-ink antialiased;
     background-image:
-      radial-gradient(70rem 44rem at 100% -12%, rgb(15 107 58 / 0.045), transparent 62%),
-      radial-gradient(55rem 40rem at -12% 4%, rgb(233 185 73 / 0.05), transparent 58%);
+      radial-gradient(70rem 44rem at 100% -12%, rgb(46 181 106 / 0.12), transparent 62%),
+      radial-gradient(55rem 40rem at -12% 4%, rgb(144 238 144 / 0.16), transparent 58%);
     background-attachment: fixed;
     text-rendering: optimizeLegibility;
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -129,24 +129,24 @@
   }
 
   .btn-primary {
-    @apply btn bg-brand-700 text-white;
-    background-image: linear-gradient(180deg, #128546 0%, #0f6b3a 100%);
-    border: 1px solid rgb(11 68 41 / 0.9);
+    @apply btn bg-leaf-300 text-leaf-950;
+    background-image: linear-gradient(180deg, #b6f2cb 0%, #8ce7ae 100%);
+    border: 1px solid rgb(88 205 138 / 0.85);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.16),
-      0 1px 2px rgb(16 24 20 / 0.18);
+      inset 0 1px 0 rgb(255 255 255 / 0.55),
+      0 1px 2px rgb(16 60 36 / 0.14);
   }
 
   .btn-primary:hover {
-    background-image: linear-gradient(180deg, #199d55 0%, #128546 100%);
+    background-image: linear-gradient(180deg, #c8f7d8 0%, #9eecbb 100%);
     box-shadow:
-      inset 0 1px 0 rgb(255 255 255 / 0.18),
-      0 6px 16px -8px rgb(15 107 58 / 0.65);
+      inset 0 1px 0 rgb(255 255 255 / 0.6),
+      0 8px 20px -10px rgb(46 181 106 / 0.7);
   }
 
   .dark .btn-primary {
-    background-image: linear-gradient(180deg, #199d55 0%, #0f6b3a 100%);
-    border-color: rgb(120 215 156 / 0.22);
+    background-image: linear-gradient(180deg, #90ee90 0%, #55cf85 100%);
+    border-color: rgb(144 238 144 / 0.4);
   }
 
   .btn-secondary {
@@ -191,7 +191,7 @@
   }
 
   .chip-active {
-    @apply border-brand-600/30 bg-brand-50 text-brand-800 dark:border-brand-400/25 dark:bg-brand-500/10 dark:text-brand-200;
+    @apply border-leaf-400/60 bg-leaf-50 text-leaf-800 dark:border-leaf-400/30 dark:bg-leaf-500/10 dark:text-leaf-200;
     box-shadow: inset 0 0 0 1px rgb(15 107 58 / 0.08);
   }
 
@@ -244,10 +244,10 @@
     isolation: isolate;
     overflow: hidden;
     background-image:
-      radial-gradient(38rem 26rem at 8% 0%, rgb(219 39 119 / 0.55), transparent 62%),
-      radial-gradient(34rem 24rem at 88% 4%, rgb(249 115 22 / 0.5), transparent 60%),
-      radial-gradient(36rem 28rem at 60% 108%, rgb(20 184 166 / 0.5), transparent 62%),
-      linear-gradient(120deg, #0f766e 0%, #15803d 42%, #b45309 100%);
+      radial-gradient(38rem 26rem at 8% 0%, rgb(144 238 144 / 0.85), transparent 62%),
+      radial-gradient(34rem 24rem at 88% 4%, rgb(85 207 133 / 0.6), transparent 60%),
+      radial-gradient(36rem 28rem at 60% 108%, rgb(220 246 229 / 0.9), transparent 62%),
+      linear-gradient(120deg, #d9f7e3 0%, #a9edc4 45%, #6fdc9b 100%);
   }
 
   .hero-mesh::after {
@@ -270,7 +270,7 @@
 
   .gradient-text {
     @apply bg-clip-text text-transparent;
-    background-image: linear-gradient(110deg, #db2777, #f97316 45%, #facc15 80%);
+    background-image: linear-gradient(110deg, #2cb56a, #1a8f52 45%, #55cf85 80%);
   }
 
   .photo-tint {
@@ -284,7 +284,7 @@
   }
 
   .avatar-ring {
-    background-image: linear-gradient(135deg, #f97316, #db2777 45%, #7c3aed 80%, #0ea5e9);
+    background-image: linear-gradient(135deg, #90ee90, #2cb56a 45%, #1a8f52 80%, #b9edcc);
     padding: 2px;
   }
 
@@ -330,7 +330,7 @@
   }
 
   .brand-wordmark {
-    background-image: linear-gradient(100deg, #0f766e, #16a34a 25%, #f59e0b 55%, #db2777 80%, #7c3aed);
+    background-image: linear-gradient(100deg, #14703f, #2cb56a 25%, #90ee90 55%, #1a8f52 80%, #55cf85);
     background-size: 220% 100%;
     -webkit-background-clip: text;
     background-clip: text;

@@ -43,13 +43,13 @@ const CATEGORY_OPTIONS: { value: DestinationCategory | ""; label: string }[] = [
 
 /** Each category keeps its own colour so the catalogue reads at a glance. */
 const CATEGORY_STYLES: Record<DestinationCategory, { chip: string; tile: string; label: string }> = {
-  HISTORY: { chip: "bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200", tile: "from-amber-500 to-orange-600", label: "History" },
-  HERITAGE: { chip: "bg-rose-100 text-rose-900 dark:bg-rose-500/15 dark:text-rose-200", tile: "from-rose-500 to-fuchsia-600", label: "Heritage" },
-  NATURE: { chip: "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-200", tile: "from-emerald-500 to-teal-600", label: "Nature" },
+  HISTORY: { chip: "bg-amber-100 text-amber-900 dark:bg-amber-500/15 dark:text-amber-200", tile: "from-amber-500 to-leaf-600", label: "History" },
+  HERITAGE: { chip: "bg-rose-100 text-rose-900 dark:bg-rose-500/15 dark:text-rose-200", tile: "from-rose-500 to-leaf-600", label: "Heritage" },
+  NATURE: { chip: "bg-emerald-100 text-emerald-900 dark:bg-emerald-500/15 dark:text-emerald-200", tile: "from-emerald-500 to-leaf-600", label: "Nature" },
   WILDLIFE: { chip: "bg-lime-100 text-lime-900 dark:bg-lime-500/15 dark:text-lime-200", tile: "from-lime-500 to-green-600", label: "Wildlife" },
-  ADVENTURE: { chip: "bg-orange-100 text-orange-900 dark:bg-orange-500/15 dark:text-orange-200", tile: "from-orange-500 to-red-600", label: "Adventure" },
-  CULTURE: { chip: "bg-violet-100 text-violet-900 dark:bg-violet-500/15 dark:text-violet-200", tile: "from-violet-500 to-purple-600", label: "Culture" },
-  CITY: { chip: "bg-sky-100 text-sky-900 dark:bg-sky-500/15 dark:text-sky-200", tile: "from-sky-500 to-indigo-600", label: "City" },
+  ADVENTURE: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-red-600", label: "Adventure" },
+  CULTURE: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-leaf-600", label: "Culture" },
+  CITY: { chip: "bg-leaf-100 text-leaf-900 dark:bg-leaf-500/15 dark:text-leaf-200", tile: "from-leaf-500 to-leaf-600", label: "City" },
   FOOD: { chip: "bg-yellow-100 text-yellow-900 dark:bg-yellow-500/15 dark:text-yellow-200", tile: "from-yellow-400 to-amber-600", label: "Food" },
 };
 
@@ -100,7 +100,7 @@ function DestinationCard({ destination }: { destination: DestinationSummary }) {
             {tt(style.label)}
           </span>
           {destination.featured && (
-            <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 px-2.5 py-1 text-[11px] font-bold text-white shadow">
+            <span className="absolute right-3 top-3 flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-400 to-leaf-500 px-2.5 py-1 text-[11px] font-bold text-white shadow">
               <Sparkles className="h-3 w-3" aria-hidden /> Featured
             </span>
           )}
@@ -190,7 +190,7 @@ function RecommendationCard({ destination }: { destination: Recommendation }) {
         {destination.reasons.length > 0 && (
           <ul className="flex flex-wrap gap-1.5">
             {destination.reasons.map((reason) => (
-              <li key={reason} className="rounded-full bg-gradient-to-r from-fuchsia-50 to-amber-50 px-2.5 py-1 text-[11px] font-bold text-fuchsia-800 ring-1 ring-fuchsia-200/70 dark:from-fuchsia-500/10 dark:to-amber-500/10 dark:text-fuchsia-200 dark:ring-fuchsia-400/20">
+              <li key={reason} className="rounded-full bg-gradient-to-r from-leaf-50 to-amber-50 px-2.5 py-1 text-[11px] font-bold text-leaf-800 ring-1 ring-leaf-200/70 dark:from-leaf-500/10 dark:to-amber-500/10 dark:text-leaf-200 dark:ring-leaf-400/20">
                 {reason}
               </li>
             ))}
@@ -206,11 +206,11 @@ function RecommendationCard({ destination }: { destination: Recommendation }) {
 
         <div className="grid grid-cols-2 gap-2 text-xs text-muted">
           <span className="flex items-start gap-1.5 rounded-xl bg-raised/70 p-2">
-            <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-teal-600" aria-hidden />
+            <CalendarDays className="mt-0.5 h-3.5 w-3.5 shrink-0 text-leaf-600" aria-hidden />
             {destination.bestTime}
           </span>
           <span className="flex items-start gap-1.5 rounded-xl bg-raised/70 p-2">
-            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-600" aria-hidden />
+            <Clock className="mt-0.5 h-3.5 w-3.5 shrink-0 text-leaf-600" aria-hidden />
             {destination.durationDays} {destination.durationDays === 1 ? "day" : "days"} · {budgetLabel(destination.budgetLevel)}
           </span>
         </div>
@@ -375,7 +375,7 @@ function PreferenceFinder() {
             </select>
           </label>
         </div>
-        <Button type="submit" loading={busy} className="bg-gradient-to-br from-teal-600 to-emerald-700">
+        <Button type="submit" loading={busy} className="bg-gradient-to-br from-leaf-600 to-emerald-700">
           Show matching places
         </Button>
       </form>
@@ -515,13 +515,13 @@ export function TravelPage() {
         </div>
         <label className="relative block">
           <span className="sr-only">Search destinations</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-teal-500" aria-hidden />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-leaf-500" aria-hidden />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by place or region"
-            className="w-full rounded-2xl border border-line bg-surface py-3 pl-10 pr-3 text-base outline-none focus:border-teal-500"
+            className="w-full rounded-2xl border border-line bg-surface py-3 pl-10 pr-3 text-base outline-none focus:border-leaf-500"
           />
         </label>
 
@@ -651,11 +651,11 @@ function RoutePlanner({ destination }: { destination: Destination }) {
   };
 
   return (
-    <Card className="flex flex-col gap-4 border-t-4 border-t-sky-400 p-5">
+    <Card className="flex flex-col gap-4 border-t-4 border-t-leaf-400 p-5">
       <div>
         <p className="kicker">Road navigation</p>
         <h2 className="mt-1 flex items-center gap-2 font-display text-xl font-bold">
-          <Navigation className="h-5 w-5 text-sky-600" aria-hidden />
+          <Navigation className="h-5 w-5 text-leaf-600" aria-hidden />
           Plan the whole drive here
         </h2>
         <p className="mt-1 text-sm text-muted">
@@ -672,7 +672,7 @@ function RoutePlanner({ destination }: { destination: Destination }) {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Start from… e.g. Addis Ababa"
-          className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2.5 text-base outline-none focus:border-sky-500"
+          className="min-w-0 flex-1 rounded-xl border border-line bg-surface px-3 py-2.5 text-base outline-none focus:border-leaf-500"
         />
         <div className="flex gap-2">
           <Button type="submit" variant="secondary" loading={searching} disabled={query.trim().length < 2}>
@@ -692,7 +692,7 @@ function RoutePlanner({ destination }: { destination: Destination }) {
               <button
                 type="button"
                 onClick={() => chooseStart({ label: match.label, lat: match.lat, lng: match.lng })}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-sky-50 dark:hover:bg-sky-500/10"
+                className="w-full rounded-lg px-3 py-2 text-left text-sm hover:bg-leaf-50 dark:hover:bg-leaf-500/10"
               >
                 {match.label}
               </button>
@@ -702,7 +702,7 @@ function RoutePlanner({ destination }: { destination: Destination }) {
       )}
 
       {start && (
-        <div className="flex items-center justify-between gap-2 rounded-xl bg-sky-50 px-3 py-2 text-sm dark:bg-sky-500/10">
+        <div className="flex items-center justify-between gap-2 rounded-xl bg-leaf-50 px-3 py-2 text-sm dark:bg-leaf-500/10">
           <span className="min-w-0 truncate">
             <span className="font-semibold">From:</span> {start.label}
           </span>
@@ -712,7 +712,7 @@ function RoutePlanner({ destination }: { destination: Destination }) {
               setStart(null);
               setRoute(null);
             }}
-            className="shrink-0 text-xs font-bold text-sky-700 dark:text-sky-300"
+            className="shrink-0 text-xs font-bold text-leaf-700 dark:text-leaf-300"
           >
             Clear
           </button>
@@ -724,7 +724,7 @@ function RoutePlanner({ destination }: { destination: Destination }) {
 
       {route && (
         <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
-          <span className="rounded-full bg-sky-100 px-3 py-1.5 text-sky-800 dark:bg-sky-500/15 dark:text-sky-200">
+          <span className="rounded-full bg-leaf-100 px-3 py-1.5 text-leaf-800 dark:bg-leaf-500/15 dark:text-leaf-200">
             {route.distanceKm} km
           </span>
           <span className="rounded-full bg-emerald-100 px-3 py-1.5 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-200">
@@ -751,7 +751,7 @@ function RoutePlanner({ destination }: { destination: Destination }) {
           <ol className="flex max-h-64 flex-col gap-1 overflow-y-auto rounded-xl border border-line p-2">
             {route.steps.map((step, i) => (
               <li key={`${i}-${step.instruction}`} className="flex items-start gap-2 rounded-lg px-2 py-1.5 text-sm odd:bg-raised/50">
-                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-sky-600 text-[10px] font-black text-white">
+                <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-leaf-600 text-[10px] font-black text-white">
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -776,7 +776,7 @@ function InfoBlock({ title, children, icon: Icon }: { title: string; children: R
   return (
     <section className="flex flex-col gap-2">
       <h2 className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.14em] text-muted">
-        {Icon && <Icon className="h-4 w-4 text-teal-600" aria-hidden />}
+        {Icon && <Icon className="h-4 w-4 text-leaf-600" aria-hidden />}
         {title}
       </h2>
       {children}
@@ -821,7 +821,7 @@ export function DestinationPage() {
 
   return (
     <article className="flex flex-col gap-6">
-      <Link to="/travel" className="text-sm font-semibold text-teal-700 dark:text-teal-300">← All places</Link>
+      <Link to="/travel" className="text-sm font-semibold text-leaf-700 dark:text-leaf-300">← All places</Link>
 
       <div className="relative overflow-hidden rounded-3xl">
         <PlaceImage
@@ -891,7 +891,7 @@ export function DestinationPage() {
           <InfoBlock title="What is there" icon={Mountain}>
             <ul className="flex flex-wrap gap-2">
               {destination.highlights.map((item) => (
-                <li key={item} className="rounded-full bg-gradient-to-r from-emerald-50 to-teal-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200/70 dark:from-emerald-500/10 dark:to-teal-500/10 dark:text-emerald-200 dark:ring-emerald-400/20">
+                <li key={item} className="rounded-full bg-gradient-to-r from-emerald-50 to-leaf-50 px-3 py-1.5 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200/70 dark:from-emerald-500/10 dark:to-leaf-500/10 dark:text-emerald-200 dark:ring-emerald-400/20">
                   {item}
                 </li>
               ))}
@@ -902,7 +902,7 @@ export function DestinationPage() {
             <ul className="flex flex-col gap-2">
               {destination.activities.map((item) => (
                 <li key={item} className="flex items-start gap-2 text-sm text-ink/90">
-                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-fuchsia-500" aria-hidden />
+                  <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-leaf-500" aria-hidden />
                   {item}
                 </li>
               ))}
@@ -925,7 +925,7 @@ export function DestinationPage() {
             </InfoBlock>
           </Card>
 
-          <Card className="flex flex-col gap-3 border-t-4 border-t-teal-400 p-4">
+          <Card className="flex flex-col gap-3 border-t-4 border-t-leaf-400 p-4">
             <InfoBlock title="Getting there" icon={Route}>
               <p className="text-sm text-ink/90">{destination.gettingThere}</p>
             </InfoBlock>

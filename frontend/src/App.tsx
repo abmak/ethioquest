@@ -45,11 +45,11 @@ function RequireAdmin({ children }: { children: ReactNode }) {
 }
 
 const TABS = [
-  { to: "/quiz", label: "Know Ethiopia", icon: Brain, tint: "from-fuchsia-600 to-orange-500" },
-  { to: "/travel", label: "Places to Visit", icon: Compass, tint: "from-teal-600 to-lime-500" },
-  { to: "/experiences", label: "Share", icon: Sparkles, tint: "from-rose-500 to-amber-400" },
-  { to: "/messages", label: "Messages", icon: MessageCircle, tint: "from-violet-600 to-sky-500" },
-  { to: "/people", label: "People", icon: Users, tint: "from-amber-500 to-rose-500" },
+  { to: "/quiz", label: "Know Ethiopia", icon: Brain, tint: "from-leaf-300 to-leaf-500" },
+  { to: "/travel", label: "Places to Visit", icon: Compass, tint: "from-leaf-200 to-leaf-400" },
+  { to: "/experiences", label: "Share", icon: Sparkles, tint: "from-leaf-300 to-leaf-600" },
+  { to: "/messages", label: "Messages", icon: MessageCircle, tint: "from-leaf-200 to-leaf-500" },
+  { to: "/people", label: "People", icon: Users, tint: "from-leaf-300 to-leaf-400" },
 ] as const;
 
 function AppChrome({ children }: { children: ReactNode }) {
@@ -77,9 +77,9 @@ function AppChrome({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex min-h-dvh flex-col bg-canvas text-ink">
-      <header className="sticky top-0 z-30 border-b border-line bg-surface/85 shadow-sm backdrop-blur-md">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4">
-          <Link to="/quiz" className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500" aria-label="Ethio Quest home">
+      <header className="sticky top-0 z-30 border-b border-line/80 bg-surface/80 shadow-[0_10px_30px_-22px_rgba(16,24,20,0.55)] backdrop-blur-xl">
+        <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 px-4 sm:h-16">
+          <Link to="/quiz" className="rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-leaf-500" aria-label="Ethio Quest home">
             <BrandLockup size="md" />
           </Link>
           <div className="flex items-center gap-1.5">
@@ -87,7 +87,7 @@ function AppChrome({ children }: { children: ReactNode }) {
             {isAdmin && (
               <Link
                 to="/admin"
-                className="hidden h-9 items-center gap-1.5 rounded-xl border border-violet-300/60 bg-violet-50 px-3 text-xs font-semibold text-violet-700 transition hover:bg-violet-100 sm:inline-flex dark:border-violet-400/30 dark:bg-violet-500/10 dark:text-violet-200"
+                className="hidden h-9 items-center gap-1.5 rounded-xl border border-leaf-300/60 bg-leaf-50 px-3 text-xs font-semibold text-leaf-700 transition hover:bg-leaf-100 sm:inline-flex dark:border-leaf-400/30 dark:bg-leaf-500/10 dark:text-leaf-200"
                 aria-label="Admin dashboard"
               >
                 <LayoutDashboard className="h-4 w-4" />
@@ -120,7 +120,7 @@ function AppChrome({ children }: { children: ReactNode }) {
         <div className="eth-band h-[3px]" aria-hidden />
       </header>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 pb-28 pt-6 animate-slide-up">
+      <main className="mx-auto w-full max-w-6xl flex-1 animate-slide-up px-4 pb-32 pt-5">
         {children}
         <footer className="mt-8 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-[11px] text-muted">
           <span>Ethio Quest</span>
@@ -132,22 +132,22 @@ function AppChrome({ children }: { children: ReactNode }) {
       </main>
 
       <nav className="fixed inset-x-0 bottom-3 z-30 px-3 pb-[env(safe-area-inset-bottom)]">
-        <ul className="mx-auto grid max-w-xl grid-cols-5 gap-1 rounded-2xl border border-line bg-surface/95 p-1.5 shadow-lift backdrop-blur-md">
+        <ul className="mx-auto grid max-w-xl grid-cols-5 gap-1 rounded-[1.75rem] border border-line/80 bg-surface/90 p-1.5 shadow-[0_20px_50px_-24px_rgba(16,24,20,0.65)] backdrop-blur-xl">
           {TABS.map(({ to, label, icon: Icon, tint }) => (
             <li key={to}>
               <NavLink
                 to={to}
                 className={({ isActive }) =>
                   cn(
-                    "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl px-0.5 text-center text-[9px] font-semibold leading-tight transition sm:text-xs",
+                    "relative flex min-h-[52px] flex-col items-center justify-center gap-0.5 rounded-2xl px-0.5 text-center text-[9px] font-semibold leading-tight transition-all duration-200 sm:text-[11px]",
                     isActive
-                      ? `bg-gradient-to-br ${tint} text-white shadow-md`
-                      : "text-muted hover:bg-raised hover:text-ink",
+                      ? `-translate-y-0.5 bg-gradient-to-br ${tint} text-leaf-950 shadow-lg shadow-leaf-500/25`
+                      : "text-muted hover:bg-raised hover:text-ink active:scale-95",
                   )
                 }
               >
                 <span className="relative">
-                  <Icon className="h-5 w-5" aria-hidden />
+                  <Icon className="h-[22px] w-[22px]" aria-hidden />
                   {to === "/messages" && unread > 0 && (
                     <span className="absolute -right-2 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white ring-2 ring-surface">
                       {unread > 9 ? "9+" : unread}

@@ -25,6 +25,21 @@ export default {
           900: "#0b4429",
           950: "#042417",
         },
+        // Light green — the everyday accent: soft surfaces, active states and
+        // the highlight gradient used across the app.
+        leaf: {
+          50: "#f1fbf4",
+          100: "#dcf6e5",
+          200: "#b9edcc",
+          300: "#90ee90",
+          400: "#55cf85",
+          500: "#2cb56a",
+          600: "#1a8f52",
+          700: "#14703f",
+          800: "#115a34",
+          900: "#0e472a",
+          950: "#062e1a",
+        },
         // Highland gold — used for accents, ceremony and highlights.
         accent: {
           50: "#fdf9e7",

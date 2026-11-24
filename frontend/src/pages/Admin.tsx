@@ -91,13 +91,13 @@ const CATEGORY_VALUES: DestinationCategory[] = [
 
 const CATEGORY_TONE: Record<DestinationCategory, string> = {
   HISTORY: "bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300",
-  HERITAGE: "bg-orange-100 text-orange-800 dark:bg-orange-400/15 dark:text-orange-300",
+  HERITAGE: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
   NATURE: "bg-emerald-100 text-emerald-800 dark:bg-emerald-400/15 dark:text-emerald-300",
   WILDLIFE: "bg-lime-100 text-lime-800 dark:bg-lime-400/15 dark:text-lime-300",
   ADVENTURE: "bg-rose-100 text-rose-800 dark:bg-rose-400/15 dark:text-rose-300",
-  CULTURE: "bg-violet-100 text-violet-800 dark:bg-violet-400/15 dark:text-violet-300",
-  CITY: "bg-sky-100 text-sky-800 dark:bg-sky-400/15 dark:text-sky-300",
-  FOOD: "bg-pink-100 text-pink-800 dark:bg-pink-400/15 dark:text-pink-300",
+  CULTURE: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
+  CITY: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
+  FOOD: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
 };
 
 // ---------------------------------------------------------------------------
@@ -105,15 +105,15 @@ const CATEGORY_TONE: Record<DestinationCategory, string> = {
 // ---------------------------------------------------------------------------
 
 const TILES: { key: keyof AdminOverview["totals"]; label: string; icon: typeof Users; tone: string }[] = [
-  { key: "users", label: "Members", icon: Users, tone: "from-indigo-500 via-indigo-600 to-violet-700" },
-  { key: "posts", label: "Stories", icon: MessageCircle, tone: "from-sky-500 via-cyan-600 to-teal-600" },
-  { key: "likes", label: "Likes", icon: Heart, tone: "from-rose-500 via-pink-600 to-fuchsia-700" },
-  { key: "comments", label: "Comments", icon: MessageCircle, tone: "from-amber-400 via-orange-500 to-rose-500" },
-  { key: "follows", label: "Follows", icon: Users, tone: "from-emerald-500 via-emerald-600 to-teal-700" },
-  { key: "messages", label: "Messages", icon: MessageCircle, tone: "from-violet-500 via-purple-600 to-indigo-700" },
-  { key: "destinations", label: "Places", icon: MapPin, tone: "from-teal-500 via-emerald-600 to-green-700" },
-  { key: "attempts", label: "Quiz plays", icon: Trophy, tone: "from-yellow-400 via-amber-500 to-orange-600" },
-  { key: "newUsers30d", label: "New in 30d", icon: TrendingUp, tone: "from-fuchsia-500 via-pink-600 to-rose-600" },
+  { key: "users", label: "Members", icon: Users, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
+  { key: "posts", label: "Stories", icon: MessageCircle, tone: "from-leaf-500 via-leaf-600 to-leaf-600" },
+  { key: "likes", label: "Likes", icon: Heart, tone: "from-rose-500 via-leaf-600 to-leaf-700" },
+  { key: "comments", label: "Comments", icon: MessageCircle, tone: "from-amber-400 via-leaf-500 to-rose-500" },
+  { key: "follows", label: "Follows", icon: Users, tone: "from-emerald-500 via-emerald-600 to-leaf-700" },
+  { key: "messages", label: "Messages", icon: MessageCircle, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
+  { key: "destinations", label: "Places", icon: MapPin, tone: "from-leaf-500 via-emerald-600 to-green-700" },
+  { key: "attempts", label: "Quiz plays", icon: Trophy, tone: "from-yellow-400 via-amber-500 to-leaf-600" },
+  { key: "newUsers30d", label: "New in 30d", icon: TrendingUp, tone: "from-leaf-500 via-leaf-600 to-rose-600" },
   { key: "banned", label: "Suspended", icon: Ban, tone: "from-slate-500 via-slate-600 to-slate-700" },
 ];
 
@@ -166,9 +166,9 @@ function OverviewPanel() {
         <Card className="flex flex-col gap-3 p-5">
           <div className="flex items-center justify-between">
             <h3 className="flex items-center gap-2 font-semibold">
-              <TrendingUp className="h-4 w-4 text-teal-600" aria-hidden /> Stories shared, last 14 days
+              <TrendingUp className="h-4 w-4 text-leaf-600" aria-hidden /> Stories shared, last 14 days
             </h3>
-            <span className="rounded-full bg-teal-50 px-2 py-0.5 text-xs font-semibold text-teal-700">
+            <span className="rounded-full bg-leaf-50 px-2 py-0.5 text-xs font-semibold text-leaf-700">
               {report.dailyStories.reduce((sum, d) => sum + d.count, 0)} total
             </span>
           </div>
@@ -176,7 +176,7 @@ function OverviewPanel() {
             {report.dailyStories.map((day) => (
               <div key={day.day} className="flex h-full flex-1 flex-col justify-end gap-1" title={`${day.day}: ${day.count}`}>
                 <div
-                  className="w-full rounded-t-md bg-gradient-to-t from-indigo-600 via-violet-500 to-fuchsia-400 transition hover:opacity-80"
+                  className="w-full rounded-t-md bg-gradient-to-t from-leaf-600 via-leaf-500 to-leaf-400 transition hover:opacity-80"
                   style={{ height: `${Math.max(5, (day.count / maxDaily) * 100)}%` }}
                 />
                 <span className="text-center text-[9px] text-muted">{day.day.slice(8)}</span>
@@ -201,7 +201,7 @@ function OverviewPanel() {
                   </div>
                   <div className="h-2 overflow-hidden rounded-full bg-raised">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500"
+                      className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-leaf-500"
                       style={{ width: `${Math.max(4, (place.stories / maxPlace) * 100)}%` }}
                     />
                   </div>
@@ -233,7 +233,7 @@ function OverviewPanel() {
                   <span className="flex items-center gap-1">
                     <Heart className="h-3.5 w-3.5 fill-current" aria-hidden /> {story.likeCount}
                   </span>
-                  <span className="flex items-center gap-1 text-sky-600">
+                  <span className="flex items-center gap-1 text-leaf-600">
                     <MessageCircle className="h-3.5 w-3.5" aria-hidden /> {story.commentCount}
                   </span>
                 </p>
@@ -257,12 +257,12 @@ const FILTERS = [
 ] as const;
 
 const ROLE_TONE: Record<string, string> = {
-  ADMIN: "bg-violet-100 text-violet-800 dark:bg-violet-400/15 dark:text-violet-300",
-  MODERATOR: "bg-sky-100 text-sky-800 dark:bg-sky-400/15 dark:text-sky-300",
+  ADMIN: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
+  MODERATOR: "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300",
   USER: "bg-slate-100 text-slate-700 dark:bg-slate-400/15 dark:text-slate-300",
 };
 
-const ROLE_FALLBACK_TONE = "bg-teal-100 text-teal-800 dark:bg-teal-400/15 dark:text-teal-300";
+const ROLE_FALLBACK_TONE = "bg-leaf-100 text-leaf-800 dark:bg-leaf-400/15 dark:text-leaf-300";
 
 function UsersPanel() {
   const { user: me } = useAuth();
@@ -359,7 +359,7 @@ function UsersPanel() {
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className="flex items-center gap-2 font-semibold">
-          <Users className="h-4 w-4 text-indigo-600" aria-hidden /> Member management
+          <Users className="h-4 w-4 text-leaf-600" aria-hidden /> Member management
         </h3>
         <div className="flex flex-wrap items-center gap-2">
         {canManage && (
@@ -376,7 +376,7 @@ function UsersPanel() {
               onClick={() => setFilter(f.value)}
               className={cn(
                 "rounded-lg px-3 py-1.5 text-sm font-semibold transition",
-                filter === f.value ? "bg-surface text-indigo-700 shadow-sm" : "text-muted hover:text-ink",
+                filter === f.value ? "bg-surface text-leaf-700 shadow-sm" : "text-muted hover:text-ink",
               )}
             >
               {tt(f.label)}
@@ -415,7 +415,7 @@ function UsersPanel() {
                   <span
                     className={cn(
                       "flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br text-sm font-bold text-white shadow-sm",
-                      member.banned ? "from-slate-400 to-slate-600" : "from-indigo-500 to-violet-600",
+                      member.banned ? "from-slate-400 to-slate-600" : "from-leaf-500 to-leaf-600",
                     )}
                     aria-hidden
                   >
@@ -567,7 +567,7 @@ const PERIODS: { value: LeaderboardPeriod; label: string }[] = [
 const MEDALS = [
   "bg-gradient-to-br from-amber-400 to-yellow-600 text-white",
   "bg-gradient-to-br from-slate-300 to-slate-500 text-white",
-  "bg-gradient-to-br from-orange-400 to-amber-700 text-white",
+  "bg-gradient-to-br from-leaf-400 to-amber-700 text-white",
 ];
 
 function LeaderboardPanel() {
@@ -609,7 +609,7 @@ function LeaderboardPanel() {
                 onClick={() => setPeriod(p.value)}
                 className={cn(
                   "rounded-lg px-3 py-1.5 text-sm font-semibold transition",
-                  period === p.value ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm" : "text-muted hover:text-ink",
+                  period === p.value ? "bg-gradient-to-br from-amber-400 to-leaf-500 text-white shadow-sm" : "text-muted hover:text-ink",
                 )}
               >
                 {tt(p.label)}
@@ -630,15 +630,15 @@ function LeaderboardPanel() {
       {report && (
         <>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-leaf-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Completed</p>
               <p className="text-lg font-bold">{report.summary.completed}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-emerald-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Average</p>
               <p className="text-lg font-bold">{report.summary.averageScore}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-orange-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-leaf-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Top points</p>
               <p className="text-lg font-bold">{report.summary.topScore}</p>
             </div>
@@ -681,7 +681,7 @@ function LeaderboardPanel() {
                           {entry.region ? ` · ${entry.region}` : ""}
                         </p>
                       </td>
-                      <td className="py-2 pr-3 font-semibold text-indigo-700 dark:text-indigo-300">{entry.points}</td>
+                      <td className="py-2 pr-3 font-semibold text-leaf-700 dark:text-leaf-300">{entry.points}</td>
                       <td className="py-2 pr-3">
                         {entry.correctCount}/{entry.questions}
                       </td>
@@ -991,7 +991,7 @@ function PrizeRow({ award, onSaved }: { award: PrizeAward; onSaved: (updated: Pr
   };
 
   return (
-    <li className="flex flex-col gap-2 rounded-xl border border-line bg-gradient-to-br from-amber-50/80 to-orange-50/40 p-3 dark:from-amber-400/5 dark:to-orange-400/5">
+    <li className="flex flex-col gap-2 rounded-xl border border-line bg-gradient-to-br from-amber-50/80 to-leaf-50/40 p-3 dark:from-amber-400/5 dark:to-leaf-400/5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex min-w-0 items-center gap-2.5">
           {award.imageUrl ? (
@@ -1287,7 +1287,7 @@ function PrizesPanel() {
               className={cn(
                 "rounded-lg px-3 py-1.5 text-sm font-semibold transition",
                 period === p.value
-                  ? "bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-sm"
+                  ? "bg-gradient-to-br from-amber-400 to-leaf-500 text-white shadow-sm"
                   : "text-muted hover:text-ink",
               )}
             >
@@ -1524,7 +1524,7 @@ function PlacesPanel() {
                 {place.imageUrl ? (
                   <img src={place.imageUrl} alt="" loading="lazy" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
                 ) : (
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 text-white">
+                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-leaf-600 text-white">
                     <MapPin className="h-5 w-5" aria-hidden />
                   </span>
                 )}
@@ -1561,7 +1561,7 @@ function PlacesPanel() {
 
       <Card className="flex flex-col gap-3 p-5">
         <h3 className="flex items-center gap-2 font-semibold">
-          <Plus className="h-4 w-4 text-indigo-600" aria-hidden /> Add a place to visit
+          <Plus className="h-4 w-4 text-leaf-600" aria-hidden /> Add a place to visit
         </h3>
         <form onSubmit={submit} className="flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -1836,7 +1836,7 @@ function RolesPanel() {
       <Card className="flex flex-col gap-4 p-5">
         <div>
           <h3 className="flex items-center gap-2 font-semibold">
-            <KeyRound className="h-4 w-4 text-violet-600" aria-hidden /> Roles & permissions
+            <KeyRound className="h-4 w-4 text-leaf-600" aria-hidden /> Roles & permissions
           </h3>
           <p className="text-xs text-muted">
             Toggle a capability to grant or remove it. Changes apply on the member's next request. The administrator
@@ -1858,7 +1858,7 @@ function RolesPanel() {
                   {role.label}
                   <span className="rounded-full bg-subtle px-2 py-0.5 text-[10px] font-bold text-muted">{role.name}</span>
                   {role.builtIn && (
-                    <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-400/15 dark:text-indigo-300">
+                    <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[10px] font-bold text-leaf-700 dark:bg-leaf-400/15 dark:text-leaf-300">
                       Built-in
                     </span>
                   )}
@@ -1985,7 +1985,7 @@ function AuditPanel() {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 font-semibold">
-            <ScrollText className="h-4 w-4 text-sky-600" aria-hidden /> Audit log
+            <ScrollText className="h-4 w-4 text-leaf-600" aria-hidden /> Audit log
           </h3>
           <p className="text-xs text-muted">Every staff action is recorded with the actor, the target and the change.</p>
         </div>
@@ -2034,7 +2034,7 @@ function AuditPanel() {
                 <p className="text-sm font-semibold text-ink">
                   {entry.actorName}{" "}
                   <span className="font-normal text-muted">({entry.actorRole || "member"})</span>{" "}
-                  <span className="rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-bold text-sky-700 dark:bg-sky-400/15 dark:text-sky-300">
+                  <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[11px] font-bold text-leaf-700 dark:bg-leaf-400/15 dark:text-leaf-300">
                     {entry.action}
                   </span>
                 </p>
@@ -2152,7 +2152,7 @@ function AnswersPanel() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="flex items-center gap-2 font-semibold">
-            <ClipboardList className="h-4 w-4 text-fuchsia-600" aria-hidden /> Answer details
+            <ClipboardList className="h-4 w-4 text-leaf-600" aria-hidden /> Answer details
           </h3>
           <p className="text-xs text-muted">Every scored answer by member, play and question, with the right answer.</p>
         </div>
@@ -2194,19 +2194,19 @@ function AnswersPanel() {
       {data && (
         <>
           <div className="grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-            <div className="rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-leaf-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Plays</p>
               <p className="text-lg font-bold">{data.summary.plays}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-teal-500 to-emerald-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-emerald-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Questions</p>
               <p className="text-lg font-bold">{data.summary.questions}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-leaf-500 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Correct</p>
               <p className="text-lg font-bold">{data.summary.correct}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-fuchsia-500 to-rose-500 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-rose-500 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Accuracy</p>
               <p className="text-lg font-bold">{data.summary.accuracy}%</p>
             </div>
@@ -2356,15 +2356,15 @@ function RetriesPanel() {
       {report && (
         <>
           <div className="grid grid-cols-3 gap-2 text-center">
-            <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-emerald-500 to-leaf-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Collected</p>
               <p className="text-lg font-bold">{formatEtb(report.totalEtb)}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-500 to-leaf-600 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Retries</p>
               <p className="text-lg font-bold">{report.confirmedCount}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-amber-400 to-leaf-500 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Price</p>
               <p className="text-lg font-bold">{report.priceEtb} ETB</p>
             </div>
@@ -2398,7 +2398,7 @@ function RetriesPanel() {
                     </p>
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[11px] font-bold text-violet-700 dark:bg-violet-400/15 dark:text-violet-300">
+                    <span className="rounded-full bg-leaf-100 px-2 py-0.5 text-[11px] font-bold text-leaf-700 dark:bg-leaf-400/15 dark:text-leaf-300">
                       {RETRY_METHOD_LABELS[payment.method] ?? payment.method}
                     </span>
                     <span className="text-xs text-muted">
@@ -2434,7 +2434,7 @@ export function AdminPage() {
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-700 via-violet-700 to-fuchsia-700 p-6 text-white shadow-lift">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-leaf-700 via-leaf-700 to-leaf-700 p-6 text-white shadow-lift">
         <ShieldCheck className="pointer-events-none absolute -right-6 -top-6 h-40 w-40 text-white/10" aria-hidden />
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/70">Ethio Quest · Staff</p>
         <h1 className="mt-1 font-display text-2xl font-extrabold sm:text-4xl">Admin dashboard</h1>
@@ -2459,7 +2459,7 @@ export function AdminPage() {
             className={cn(
               "inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition",
               tab === value
-                ? "bg-gradient-to-r from-indigo-600 to-violet-600 text-white shadow-md"
+                ? "bg-gradient-to-r from-leaf-600 to-leaf-600 text-white shadow-md"
                 : "border border-line bg-surface text-muted hover:text-ink",
             )}
           >

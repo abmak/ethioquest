@@ -44,8 +44,8 @@ interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const BUTTON_VARIANTS = {
-  primary: "bg-gradient-to-br from-brand-600 to-brand-800 text-white shadow-md shadow-brand-900/20 hover:shadow-lg hover:-translate-y-px active:translate-y-0 disabled:opacity-60",
-  secondary: "border border-line bg-surface text-ink shadow-sm hover:-translate-y-px hover:border-brand-300 hover:shadow-md",
+  primary: "bg-gradient-to-br from-leaf-300 via-leaf-400 to-leaf-500 text-leaf-950 shadow-md shadow-leaf-500/25 hover:shadow-lg hover:-translate-y-px active:translate-y-0 disabled:opacity-60",
+  secondary: "border border-line bg-surface text-ink shadow-sm hover:-translate-y-px hover:border-leaf-400 hover:shadow-md",
   ghost: "text-ink hover:bg-subtle",
   danger: "bg-gradient-to-br from-rose-500 to-rose-700 text-white shadow-md hover:shadow-lg hover:-translate-y-px disabled:opacity-60",
 } as const;

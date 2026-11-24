@@ -50,14 +50,14 @@ function PostCard({ post }: { post: ExperiencePost }) {
             )}
           </div>
         ) : (
-          <div className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-orange-400 to-amber-300">
+          <div className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-amber-300">
             <Sparkles className="h-10 w-10 text-white/85" aria-hidden />
           </div>
         )}
 
         <div className="flex flex-col gap-2 p-4">
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-            <span className="flex items-center gap-1 rounded-full bg-teal-50 px-2 py-1 text-teal-800 dark:bg-teal-500/10 dark:text-teal-200">
+            <span className="flex items-center gap-1 rounded-full bg-leaf-50 px-2 py-1 text-leaf-800 dark:bg-leaf-500/10 dark:text-leaf-200">
               <MapPin className="h-3 w-3" aria-hidden /> {post.destinationName}
             </span>
             <span className="rounded-full bg-raised px-2 py-1 text-muted">{post.region}</span>
@@ -83,7 +83,7 @@ function PostCard({ post }: { post: ExperiencePost }) {
         </span>
         <Link
           to={`/messages/${post.author.id}`}
-          className="ml-auto flex items-center gap-1.5 text-xs font-bold text-violet-700 hover:underline dark:text-violet-300"
+          className="ml-auto flex items-center gap-1.5 text-xs font-bold text-leaf-700 hover:underline dark:text-leaf-300"
         >
           <MessageCircle className="h-3.5 w-3.5" aria-hidden />
           Message
@@ -378,7 +378,7 @@ export function NewExperiencePage() {
 
           {error && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">{error}</p>}
 
-          <Button type="submit" loading={busy} className="bg-gradient-to-br from-rose-500 to-orange-500">
+          <Button type="submit" loading={busy} className="bg-gradient-to-br from-rose-500 to-leaf-500">
             <Sparkles className="h-4 w-4" aria-hidden />
             Publish experience
           </Button>
@@ -498,14 +498,14 @@ export function ExperienceDetailPage() {
         {post.imageUrls[0] ? (
           <img src={post.imageUrls[0]} alt="" className="aspect-[16/8] w-full object-cover" />
         ) : (
-          <div className="flex aspect-[16/8] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-orange-400 to-amber-300">
+          <div className="flex aspect-[16/8] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-amber-300">
             <Sparkles className="h-12 w-12 text-white/85" aria-hidden />
           </div>
         )}
 
         <div className="flex flex-col gap-4 p-5">
           <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold">
-            <span className="flex items-center gap-1 rounded-full bg-teal-50 px-2.5 py-1 text-teal-800 dark:bg-teal-500/10 dark:text-teal-200">
+            <span className="flex items-center gap-1 rounded-full bg-leaf-50 px-2.5 py-1 text-leaf-800 dark:bg-leaf-500/10 dark:text-leaf-200">
               <MapPin className="h-3 w-3" aria-hidden /> {post.destinationName}
             </span>
             <span className="rounded-full bg-raised px-2.5 py-1 text-muted">{post.region}</span>
@@ -552,7 +552,7 @@ export function ExperienceDetailPage() {
               className={cn(
                 "inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold transition disabled:opacity-60",
                 post.likedByMe
-                  ? "bg-gradient-to-r from-rose-500 to-fuchsia-500 text-white shadow-md"
+                  ? "bg-gradient-to-r from-rose-500 to-leaf-500 text-white shadow-md"
                   : "border border-line bg-surface text-ink hover:border-rose-300 hover:text-rose-600",
               )}
             >

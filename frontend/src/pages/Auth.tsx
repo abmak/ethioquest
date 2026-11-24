@@ -11,7 +11,7 @@ interface AuthPageProps {
 }
 
 const inputClass =
-  "min-h-11 w-full rounded-xl border border-line bg-surface px-3 text-base text-ink outline-none transition focus:border-fuchsia-400 focus:ring-4 focus:ring-fuchsia-400/10";
+  "min-h-11 w-full rounded-xl border border-line bg-surface px-3 text-base text-ink outline-none transition focus:border-leaf-400 focus:ring-4 focus:ring-leaf-400/10";
 
 export function AuthPage({ mode }: AuthPageProps) {
   const { user, login, register } = useAuth();
@@ -53,7 +53,7 @@ export function AuthPage({ mode }: AuthPageProps) {
       {/* Brand panel — vivid Ethiopian colours with the product promises. */}
       <aside className="hero-mesh relative hidden flex-col justify-between p-10 text-white lg:flex">
         <div className="relative z-10">
-          <span className="rounded-2xl bg-white/95 px-3 py-2 shadow-xl shadow-teal-950/20">
+          <span className="rounded-2xl bg-white/95 px-3 py-2 shadow-xl shadow-leaf-950/20">
             <BrandLockup size="md" />
           </span>
         </div>
@@ -155,7 +155,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                 </p>
               )}
 
-              <Button type="submit" loading={busy} className="mt-2 w-full bg-gradient-to-br from-fuchsia-600 via-rose-500 to-orange-500">
+              <Button type="submit" loading={busy} className="mt-2 w-full bg-gradient-to-br from-leaf-600 via-rose-500 to-leaf-500">
                 <Sparkles className="h-4 w-4" aria-hidden />
                 {isRegister ? "Create account" : "Sign in"}
               </Button>
@@ -163,7 +163,7 @@ export function AuthPage({ mode }: AuthPageProps) {
 
             <p className="mt-3 text-center text-xs text-muted">
               By continuing you agree to our{" "}
-              <Link to="/terms" className="font-semibold text-fuchsia-700 hover:underline dark:text-fuchsia-300">
+              <Link to="/terms" className="font-semibold text-leaf-700 hover:underline dark:text-leaf-300">
                 Terms & conditions
               </Link>
               .
@@ -174,14 +174,14 @@ export function AuthPage({ mode }: AuthPageProps) {
             {isRegister ? (
               <>
                 Already have an account?{" "}
-                <Link to="/login" className="font-bold text-fuchsia-700 dark:text-fuchsia-300">
+                <Link to="/login" className="font-bold text-leaf-700 dark:text-leaf-300">
                   Sign in
                 </Link>
               </>
             ) : (
               <>
                 New here?{" "}
-                <Link to="/register" className="font-bold text-fuchsia-700 dark:text-fuchsia-300">
+                <Link to="/register" className="font-bold text-leaf-700 dark:text-leaf-300">
                   Create an account
                 </Link>
               </>

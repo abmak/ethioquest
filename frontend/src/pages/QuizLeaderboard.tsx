@@ -28,24 +28,24 @@ const PRIZE_PERIOD_OF: Record<LeaderboardPeriod, PrizePeriod> = {
 function medalClass(rank: number): string {
   if (rank === 1) return "bg-gradient-to-br from-amber-300 to-yellow-500 text-amber-950 shadow-md shadow-amber-400/40";
   if (rank === 2) return "bg-gradient-to-br from-slate-200 to-slate-400 text-slate-800 shadow-sm";
-  if (rank === 3) return "bg-gradient-to-br from-orange-300 to-amber-600 text-white shadow-sm shadow-orange-400/40";
+  if (rank === 3) return "bg-gradient-to-br from-leaf-500 to-leaf-700 text-white shadow-sm shadow-leaf-500/40";
   return "bg-white text-slate-500 ring-1 ring-slate-200";
 }
 
 function rowClass(rank: number, isMe: boolean): string {
   const base = "relative flex items-center justify-between gap-3 rounded-2xl px-3 py-3 transition";
-  if (isMe) return cn(base, "bg-gradient-to-r from-fuchsia-50 via-violet-50 to-sky-50 ring-2 ring-fuchsia-400");
+  if (isMe) return cn(base, "bg-gradient-to-r from-leaf-50 via-leaf-50 to-leaf-50 ring-2 ring-leaf-400");
   if (rank === 1) return cn(base, "bg-gradient-to-r from-amber-50 to-yellow-50/60 ring-1 ring-amber-200");
   if (rank === 2) return cn(base, "bg-slate-50/80 ring-1 ring-slate-200");
-  if (rank === 3) return cn(base, "bg-orange-50/70 ring-1 ring-orange-200");
+  if (rank === 3) return cn(base, "bg-leaf-50/70 ring-1 ring-leaf-200");
   return cn(base, "hover:bg-slate-50");
 }
 
 function avatarClass(rank: number): string {
-  if (rank === 1) return "bg-gradient-to-br from-amber-400 to-orange-500";
-  if (rank === 2) return "bg-gradient-to-br from-sky-400 to-indigo-500";
-  if (rank === 3) return "bg-gradient-to-br from-rose-400 to-fuchsia-500";
-  return "bg-gradient-to-br from-teal-400 to-emerald-500";
+  if (rank === 1) return "bg-gradient-to-br from-amber-400 to-leaf-500";
+  if (rank === 2) return "bg-gradient-to-br from-leaf-400 to-leaf-500";
+  if (rank === 3) return "bg-gradient-to-br from-rose-400 to-leaf-500";
+  return "bg-gradient-to-br from-leaf-400 to-emerald-500";
 }
 
 export function QuizLeaderboard() {
@@ -93,14 +93,14 @@ export function QuizLeaderboard() {
   const range = prizes?.ranges[prizePeriod];
 
   return (
-    <Card className="relative overflow-hidden rounded-3xl border-0 bg-white p-5 shadow-[0_18px_50px_-32px_rgba(79,70,229,0.55)] ring-1 ring-violet-100 sm:p-6">
-      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-fuchsia-200/50 blur-3xl" aria-hidden />
+    <Card className="relative overflow-hidden rounded-3xl border-0 bg-white p-5 shadow-[0_18px_50px_-32px_rgba(79,70,229,0.55)] ring-1 ring-leaf-100 sm:p-6">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-leaf-200/50 blur-3xl" aria-hidden />
       <div className="pointer-events-none absolute -bottom-20 -left-10 h-40 w-40 rounded-full bg-amber-200/50 blur-3xl" aria-hidden />
 
       <div className="relative flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-fuchsia-600 to-orange-500 text-white shadow-lg shadow-fuchsia-500/30">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl bg-gradient-to-br from-leaf-600 to-leaf-500 text-white shadow-lg shadow-leaf-500/30">
               <Trophy className="h-5 w-5" aria-hidden />
             </span>
             <div>
@@ -123,7 +123,7 @@ export function QuizLeaderboard() {
                   className={cn(
                     "min-h-9 rounded-xl px-3 text-xs font-bold transition",
                     period === p.value
-                      ? "bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-md shadow-fuchsia-500/30"
+                      ? "bg-gradient-to-r from-leaf-600 to-leaf-600 text-white shadow-md shadow-leaf-500/30"
                       : "text-slate-500 hover:text-slate-800",
                   )}
                 >
@@ -198,7 +198,7 @@ export function QuizLeaderboard() {
                           <p className="flex items-center gap-2 truncate text-sm font-bold text-slate-900">
                             {entry.displayName}
                             {isMe && (
-                              <span className="rounded-full bg-fuchsia-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
+                              <span className="rounded-full bg-leaf-600 px-2 py-0.5 text-[10px] font-black uppercase tracking-wide text-white">
                                 You
                               </span>
                             )}
@@ -251,7 +251,7 @@ export function QuizLeaderboard() {
                 {periodPrizes.map((tier) => (
                   <li
                     key={tier.rank}
-                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-amber-50/70 to-orange-50/40 p-3"
+                    className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-gradient-to-r from-amber-50/70 to-leaf-50/40 p-3"
                   >
                     <span
                       className={cn("grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black", medalClass(tier.rank))}
@@ -300,7 +300,7 @@ export function QuizLeaderboard() {
               </ul>
               <Link
                 to="/terms"
-                className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-violet-700 hover:underline"
+                className="mt-2 inline-flex items-center gap-1 text-xs font-bold text-leaf-700 hover:underline"
               >
                 {tt("Read the full terms & conditions")}
                 <ChevronRight className="h-3.5 w-3.5" aria-hidden />
