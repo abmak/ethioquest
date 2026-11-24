@@ -16,6 +16,10 @@ const envSchema = z.object({
   COOKIE_SECURE: z.enum(["true", "false"]).or(z.literal("")).optional(),
   // Comma-separated admin emails that are promoted to ADMIN on boot.
   ADMIN_EMAILS: z.string().optional().default(""),
+  // Owner account the API guarantees on every boot, so a fresh deployment always
+  // has a way in. Override both values to use a different owner login.
+  ADMIN_BOOTSTRAP_EMAIL: z.string().optional().default("admin@gmail.com"),
+  ADMIN_BOOTSTRAP_PASSWORD: z.string().optional().default("Abay@1234"),
   // Where member photos are stored, relative to the API's working directory.
   UPLOAD_DIR: z.string().default("uploads"),
   MAX_UPLOAD_MB: z.coerce.number().int().positive().max(25).default(6),

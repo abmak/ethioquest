@@ -5,8 +5,13 @@ import { prisma } from "./lib/prisma";
 import { createApp } from "./app";
 import { ensureQuizPool } from "./lib/quiz/pool";
 import { ensurePrizeConfig } from "./lib/prizes";
+import { ensureAdminAccount } from "./lib/admin-bootstrap";
 
 async function main(): Promise<void> {
+  await ensureAdminAccount().catch((err) => {
+    logger.warn({ err }, "Could not ensure the owner admin account");
+  });
+
   await ensureQuizPool().catch((err) => {
     logger.warn({ err }, "Could not seed the quiz question pool");
   });
