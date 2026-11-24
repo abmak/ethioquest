@@ -50,7 +50,7 @@ function PostCard({ post }: { post: ExperiencePost }) {
             )}
           </div>
         ) : (
-          <div className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-leaf-300">
+          <div className="flex aspect-[16/10] w-full items-center justify-center bg-gradient-to-br from-leaf-500 via-leaf-400 to-leaf-300">
             <Sparkles className="h-10 w-10 text-white/85" aria-hidden />
           </div>
         )}
@@ -378,7 +378,7 @@ export function NewExperiencePage() {
 
           {error && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">{error}</p>}
 
-          <Button type="submit" loading={busy} className="bg-gradient-to-br from-rose-500 to-leaf-500">
+          <Button type="submit" loading={busy} className="bg-gradient-to-br from-leaf-700 to-leaf-500">
             <Sparkles className="h-4 w-4" aria-hidden />
             Publish experience
           </Button>
@@ -389,7 +389,7 @@ export function NewExperiencePage() {
             <PhotoPicker photos={photos} onChange={setPhotos} />
           </Card>
 
-          <Card className="flex flex-col gap-2 border-t-4 border-t-leaf-400 bg-gradient-to-br from-leaf-50 to-rose-50 p-5 dark:from-leaf-500/10 dark:to-rose-500/10">
+          <Card className="flex flex-col gap-2 border-t-4 border-t-leaf-400 bg-gradient-to-br from-leaf-50 to-leaf-100 p-5 dark:from-leaf-500/10 dark:to-leaf-500/10">
             <p className="flex items-center gap-2 font-display text-sm font-bold text-leaf-900 dark:text-leaf-200">
               <Camera className="h-4 w-4" aria-hidden /> Make it shine
             </p>
@@ -498,7 +498,7 @@ export function ExperienceDetailPage() {
         {post.imageUrls[0] ? (
           <img src={post.imageUrls[0]} alt="" className="aspect-[16/8] w-full object-cover" />
         ) : (
-          <div className="flex aspect-[16/8] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-leaf-300">
+          <div className="flex aspect-[16/8] w-full items-center justify-center bg-gradient-to-br from-leaf-500 via-leaf-400 to-leaf-300">
             <Sparkles className="h-12 w-12 text-white/85" aria-hidden />
           </div>
         )}
@@ -552,7 +552,7 @@ export function ExperienceDetailPage() {
               className={cn(
                 "inline-flex min-h-10 items-center gap-2 rounded-full px-4 text-sm font-bold transition disabled:opacity-60",
                 post.likedByMe
-                  ? "bg-gradient-to-r from-rose-600 to-leaf-600 text-white shadow-md"
+                  ? "bg-gradient-to-r from-leaf-700 to-leaf-600 text-white shadow-md"
                   : "border border-line bg-surface text-ink hover:border-rose-300 hover:text-rose-600",
               )}
             >

@@ -155,7 +155,7 @@ export function AuthPage({ mode }: AuthPageProps) {
                 </p>
               )}
 
-              <Button type="submit" loading={busy} className="mt-2 w-full bg-gradient-to-br from-leaf-600 via-rose-500 to-leaf-500">
+              <Button type="submit" loading={busy} className="mt-2 w-full bg-gradient-to-br from-leaf-700 via-leaf-600 to-leaf-500">
                 <Sparkles className="h-4 w-4" aria-hidden />
                 {isRegister ? "Create account" : "Sign in"}
               </Button>

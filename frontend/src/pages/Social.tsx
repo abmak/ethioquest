@@ -899,7 +899,7 @@ export function ProfilePage() {
                   {story.imageUrls[0] ? (
                     <img src={story.imageUrls[0]} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
                   ) : (
-                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-rose-400 via-leaf-400 to-leaf-300">
+                    <div className="flex aspect-[16/9] w-full items-center justify-center bg-gradient-to-br from-leaf-500 via-leaf-400 to-leaf-300">
                       <Sparkles className="h-8 w-8 text-white/80" aria-hidden />
                     </div>
                   )}

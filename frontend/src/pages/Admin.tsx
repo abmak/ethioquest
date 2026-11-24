@@ -107,13 +107,13 @@ const CATEGORY_TONE: Record<DestinationCategory, string> = {
 const TILES: { key: keyof AdminOverview["totals"]; label: string; icon: typeof Users; tone: string }[] = [
   { key: "users", label: "Members", icon: Users, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
   { key: "posts", label: "Stories", icon: MessageCircle, tone: "from-leaf-500 via-leaf-600 to-leaf-600" },
-  { key: "likes", label: "Likes", icon: Heart, tone: "from-rose-500 via-leaf-600 to-leaf-700" },
-  { key: "comments", label: "Comments", icon: MessageCircle, tone: "from-leaf-400 via-leaf-500 to-rose-500" },
+  { key: "likes", label: "Likes", icon: Heart, tone: "from-leaf-700 via-leaf-600 to-leaf-500" },
+  { key: "comments", label: "Comments", icon: MessageCircle, tone: "from-leaf-400 via-leaf-500 to-leaf-700" },
   { key: "follows", label: "Follows", icon: Users, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
   { key: "messages", label: "Messages", icon: MessageCircle, tone: "from-leaf-500 via-leaf-600 to-leaf-700" },
   { key: "destinations", label: "Places", icon: MapPin, tone: "from-leaf-500 via-leaf-600 to-green-700" },
   { key: "attempts", label: "Quiz plays", icon: Trophy, tone: "from-leaf-400 via-leaf-500 to-leaf-600" },
-  { key: "newUsers30d", label: "New in 30d", icon: TrendingUp, tone: "from-leaf-500 via-leaf-600 to-rose-600" },
+  { key: "newUsers30d", label: "New in 30d", icon: TrendingUp, tone: "from-leaf-500 via-leaf-600 to-leaf-800" },
   { key: "banned", label: "Suspended", icon: Ban, tone: "from-slate-500 via-slate-600 to-slate-700" },
 ];
 
@@ -223,7 +223,7 @@ function OverviewPanel() {
             {report.topStories.map((story) => (
               <li
                 key={story.id}
-                className="flex flex-col gap-1 rounded-xl border border-line bg-gradient-to-br from-leaf-50 to-rose-50 p-3 dark:from-leaf-400/5 dark:to-rose-400/5"
+                className="flex flex-col gap-1 rounded-xl border border-line bg-gradient-to-br from-leaf-50 to-leaf-100 p-3 dark:from-leaf-400/5 dark:to-leaf-400/5"
               >
                 <p className="line-clamp-2 text-sm font-semibold">{story.title}</p>
                 <p className="text-xs text-muted">
@@ -2206,7 +2206,7 @@ function AnswersPanel() {
               <p className="text-[11px] uppercase tracking-wide text-white/80">Correct</p>
               <p className="text-lg font-bold">{data.summary.correct}</p>
             </div>
-            <div className="rounded-xl bg-gradient-to-br from-leaf-600 to-rose-600 p-3 text-white">
+            <div className="rounded-xl bg-gradient-to-br from-leaf-700 to-leaf-500 p-3 text-white">
               <p className="text-[11px] uppercase tracking-wide text-white/80">Accuracy</p>
               <p className="text-lg font-bold">{data.summary.accuracy}%</p>
             </div>

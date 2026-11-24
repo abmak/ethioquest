@@ -44,7 +44,7 @@ function rowClass(rank: number, isMe: boolean): string {
 function avatarClass(rank: number): string {
   if (rank === 1) return "bg-gradient-to-br from-leaf-400 to-leaf-500";
   if (rank === 2) return "bg-gradient-to-br from-leaf-400 to-leaf-500";
-  if (rank === 3) return "bg-gradient-to-br from-rose-400 to-leaf-500";
+  if (rank === 3) return "bg-gradient-to-br from-leaf-500 to-leaf-300";
   return "bg-gradient-to-br from-leaf-400 to-leaf-500";
 }
 

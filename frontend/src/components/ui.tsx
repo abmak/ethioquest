@@ -1,4 +1,5 @@
 import { useEffect, type ButtonHTMLAttributes, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { Loader2, X, type LucideIcon } from "lucide-react";
 import { cn } from "../lib/utils";
@@ -113,9 +114,17 @@ export function Modal({
   }, [open, onClose]);
 
   if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title}>
-      <div className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-surface p-5 shadow-lift sm:max-w-lg sm:rounded-2xl">
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[80] flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={title}
+    >
+      <div
+        className="flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-2xl bg-surface p-5 shadow-lift sm:max-w-lg sm:rounded-2xl"
+        style={{ maxHeight: "90dvh" }}
+      >
         <div className="mb-4 flex shrink-0 items-center justify-between">
           <h2 className="text-lg font-bold text-ink">{title}</h2>
           <button type="button" onClick={onClose} className="rounded-lg p-1 text-muted hover:bg-subtle" aria-label="Close">
@@ -124,10 +133,13 @@ export function Modal({
         </div>
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">{children}</div>
         {footer && (
-          <div className="mt-4 shrink-0 border-t border-line pb-[max(0rem,env(safe-area-inset-bottom))] pt-3">{footer}</div>
+          <div className="-mx-5 -mb-5 mt-4 shrink-0 border-t border-line bg-surface px-5 pt-3 pb-[max(1rem,env(safe-area-inset-bottom))]">
+            {footer}
+          </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
