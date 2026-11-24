@@ -1,6 +1,19 @@
-import { useState, type FormEvent } from "react";
+import { useState, type FormEvent, type ReactNode } from "react";
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
-import { Compass, Sparkles, Trophy, Users } from "lucide-react";
+import {
+  AtSign,
+  Brain,
+  Compass,
+  Lock,
+  LogIn,
+  Mail,
+  ShieldCheck,
+  Sparkles,
+  Trophy,
+  UserRound,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import { BrandLockup } from "../components/Brand";
 import { Button } from "../components/ui";
 import { apiError } from "../lib/api";
@@ -11,7 +24,38 @@ interface AuthPageProps {
 }
 
 const inputClass =
-  "min-h-11 w-full rounded-xl border border-line bg-surface px-3 text-base text-ink outline-none transition focus:border-leaf-400 focus:ring-4 focus:ring-leaf-400/10";
+  "min-h-11 w-full rounded-xl border border-line bg-surface pl-10 pr-3 text-base text-ink outline-none transition focus:border-leaf-400 focus:ring-4 focus:ring-leaf-400/10";
+
+/** What the product actually does, each with the icon the app uses for it. */
+const PROMISES: { icon: LucideIcon; title: string; text: string }[] = [
+  { icon: Brain, title: "Daily quiz · monthly prizes", text: "Ten questions a day, ETB 100,000 for the top score." },
+  { icon: Compass, title: "Places to visit, mapped", text: "OpenStreetMap guides from Addis to the Danakil." },
+  { icon: Users, title: "Follow and message", text: "Private conversations with the travellers you meet." },
+];
+
+/** One labelled input with the field's own icon inside it. */
+function Field({
+  icon: Icon,
+  label,
+  children,
+}: {
+  icon: LucideIcon;
+  label: string;
+  children: ReactNode;
+}) {
+  return (
+    <label className="flex flex-col gap-1 text-sm font-medium text-ink">
+      {label}
+      <span className="relative block">
+        <Icon
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-leaf-600 dark:text-leaf-300"
+          aria-hidden
+        />
+        {children}
+      </span>
+    </label>
+  );
+}
 
 export function AuthPage({ mode }: AuthPageProps) {
   const { user, login, register } = useAuth();
@@ -63,8 +107,7 @@ export function AuthPage({ mode }: AuthPageProps) {
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/70">Discover · Learn · Share</p>
             <h1 className="mt-3 font-display text-4xl font-extrabold leading-tight">
               Ethiopia,
-              <br />
-              one question at a time.
+              <br /> one question at a time.
             </h1>
             <p className="mt-3 text-sm text-white/80">
               Play the daily quiz, plan your next trip across the highlands and the Rift Valley, then share the story
@@ -73,11 +116,7 @@ export function AuthPage({ mode }: AuthPageProps) {
           </div>
 
           <ul className="flex flex-col gap-3">
-            {[
-              { icon: Trophy, title: "Daily quiz · monthly prizes", text: "Ten questions a day, ETB 100,000 for the top score." },
-              { icon: Compass, title: "Places to visit, mapped", text: "OpenStreetMap guides from Addis to the Danakil." },
-              { icon: Users, title: "Follow and message", text: "Private conversations with the travellers you meet." },
-            ].map(({ icon: Icon, title, text }) => (
+            {PROMISES.map(({ icon: Icon, title, text }) => (
               <li key={title} className="glass flex items-start gap-3 p-3">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20">
                   <Icon className="h-4 w-4" aria-hidden />
@@ -95,13 +134,38 @@ export function AuthPage({ mode }: AuthPageProps) {
         <span className="pointer-events-none absolute -right-16 top-1/3 h-64 w-64 rounded-full bg-leaf-300/25 blur-3xl" aria-hidden />
       </aside>
 
-      <main className="flex items-center justify-center px-4 py-10">
+      <main className="flex items-center justify-center px-4 py-6 sm:py-10">
         <div className="w-full max-w-sm">
-          <div className="mb-6 flex flex-col items-center gap-2 text-center lg:hidden">
-            <BrandLockup size="lg" tagline />
+          {/* Phones get the same brand panel, compacted above the form. */}
+          <div className="hero-mesh relative mb-5 overflow-hidden rounded-3xl px-5 pb-5 pt-5 text-white shadow-soft lg:hidden">
+            <span className="pointer-events-none absolute -right-8 -top-10 h-40 w-40 rounded-full bg-leaf-300/25 blur-3xl" aria-hidden />
+            <span className="relative inline-flex rounded-2xl bg-white/95 px-2.5 py-1.5 shadow-lg">
+              <BrandLockup size="sm" />
+            </span>
+            <h1 className="relative mt-4 font-display text-2xl font-extrabold leading-tight">
+              Ethiopia, one question at a time.
+            </h1>
+            <p className="relative mt-1.5 text-xs leading-relaxed text-white/80">
+              The daily quiz, the places worth the trip, and the travellers who went first.
+            </p>
+            <ul className="relative mt-4 flex flex-wrap gap-1.5">
+              {[
+                { icon: Trophy, label: "Daily quiz" },
+                { icon: Compass, label: "Places to visit" },
+                { icon: Users, label: "Travellers" },
+              ].map(({ icon: Icon, label }) => (
+                <li
+                  key={label}
+                  className="inline-flex items-center gap-1.5 rounded-full bg-white/20 px-2.5 py-1 text-[11px] font-semibold backdrop-blur-sm"
+                >
+                  <Icon className="h-3.5 w-3.5" aria-hidden />
+                  {label}
+                </li>
+              ))}
+            </ul>
           </div>
 
-          <div className="mb-5 hidden flex-col gap-1 lg:flex">
+          <div className="mb-5 flex flex-col gap-1">
             <h2 className="font-display text-2xl font-extrabold text-ink">
               {isRegister ? "Create your account" : "Welcome back"}
             </h2>
@@ -114,12 +178,18 @@ export function AuthPage({ mode }: AuthPageProps) {
             <form onSubmit={onSubmit} className="flex flex-col gap-3">
               {isRegister && (
                 <>
-                  <label className="flex flex-col gap-1 text-sm font-medium text-ink">
-                    Display name
-                    <input className={inputClass} value={displayName} onChange={(e) => setDisplayName(e.target.value)} required maxLength={60} autoComplete="name" />
-                  </label>
-                  <label className="flex flex-col gap-1 text-sm font-medium text-ink">
-                    Username
+                  <Field icon={UserRound} label="Display name">
+                    <input
+                      className={inputClass}
+                      value={displayName}
+                      onChange={(e) => setDisplayName(e.target.value)}
+                      required
+                      maxLength={60}
+                      autoComplete="name"
+                      placeholder="Abebe Bikila"
+                    />
+                  </Field>
+                  <Field icon={AtSign} label="Username">
                     <input
                       className={inputClass}
                       value={username}
@@ -128,16 +198,23 @@ export function AuthPage({ mode }: AuthPageProps) {
                       minLength={3}
                       maxLength={24}
                       autoComplete="username"
+                      placeholder="abebe"
                     />
-                  </label>
+                  </Field>
                 </>
               )}
-              <label className="flex flex-col gap-1 text-sm font-medium text-ink">
-                Email
-                <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} required autoComplete="email" />
-              </label>
-              <label className="flex flex-col gap-1 text-sm font-medium text-ink">
-                Password
+              <Field icon={Mail} label="Email">
+                <input
+                  className={inputClass}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  autoComplete="email"
+                  placeholder="you@example.com"
+                />
+              </Field>
+              <Field icon={Lock} label="Password">
                 <input
                   className={inputClass}
                   type="password"
@@ -146,8 +223,9 @@ export function AuthPage({ mode }: AuthPageProps) {
                   required
                   minLength={isRegister ? 8 : 1}
                   autoComplete={isRegister ? "new-password" : "current-password"}
+                  placeholder={isRegister ? "At least 8 characters" : "Your password"}
                 />
-              </label>
+              </Field>
 
               {error && (
                 <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2 text-sm text-rose-700 dark:bg-rose-500/10 dark:text-rose-200">
@@ -156,9 +234,16 @@ export function AuthPage({ mode }: AuthPageProps) {
               )}
 
               <Button type="submit" loading={busy} className="mt-2 w-full bg-gradient-to-br from-leaf-700 via-leaf-600 to-leaf-500">
-                <Sparkles className="h-4 w-4" aria-hidden />
+                {isRegister ? <Sparkles className="h-4 w-4" aria-hidden /> : <LogIn className="h-4 w-4" aria-hidden />}
                 {isRegister ? "Create account" : "Sign in"}
               </Button>
+
+              {isRegister && (
+                <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted">
+                  <ShieldCheck className="h-3.5 w-3.5 text-leaf-600 dark:text-leaf-300" aria-hidden />
+                  Your password is hashed, never stored in plain text.
+                </p>
+              )}
             </form>
 
             <p className="mt-3 text-center text-xs text-muted">

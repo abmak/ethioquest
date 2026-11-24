@@ -87,11 +87,16 @@ function AppChrome({ children }: { children: ReactNode }) {
             {isAdmin && (
               <Link
                 to="/admin"
-                className="hidden h-9 items-center gap-1.5 rounded-xl border border-leaf-300/60 bg-leaf-50 px-3 text-xs font-semibold text-leaf-700 transition hover:bg-leaf-100 sm:inline-flex dark:border-leaf-400/30 dark:bg-leaf-500/10 dark:text-leaf-200"
+                // Phones matter as much as desktops here: the console is the only
+                // place to manage the queue and members, so the entry stays
+                // visible at every width and only the label is dropped on the
+                // narrowest screens.
+                className="inline-flex h-9 w-9 items-center justify-center gap-1.5 rounded-xl border border-leaf-300/60 bg-leaf-50 text-xs font-semibold text-leaf-700 transition hover:bg-leaf-100 sm:w-auto sm:px-3 dark:border-leaf-400/30 dark:bg-leaf-500/10 dark:text-leaf-200"
                 aria-label="Admin dashboard"
+                title="Admin dashboard"
               >
-                <LayoutDashboard className="h-4 w-4" />
-                Admin
+                <LayoutDashboard className="h-4 w-4 shrink-0" />
+                <span className="hidden sm:inline">Admin</span>
               </Link>
             )}
             {user && (
